@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blue Team - Gestor y Renombrador de Exámenes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Barra Superior / Header -->
+    <header class="app-header">
+      <div class="brand-area">
+        <div class="logo-badge">✈️</div>
+        <div>
+          <h1 class="brand-title">BLUE TEAM Flight School</h1>
+          <p class="brand-subtitle">Gestor Inteligente de Exámenes Manuscritos</p>
+        </div>
+      </div>
+
+      <div class="header-stats">
+        <div class="stat-pill">
+          <span class="stat-label">Total</span>
+          <span class="stat-value" id="stat-total">0</span>
+        </div>
+        <div class="stat-pill stat-pending">
+          <span class="stat-label">Pendientes</span>
+          <span class="stat-value" id="stat-pending">0</span>
+        </div>
+        <div class="stat-pill stat-analyzed">
+          <span class="stat-label">Analizados</span>
+          <span class="stat-value" id="stat-analyzed">0</span>
+        </div>
+        <div class="stat-pill stat-done">
+          <span class="stat-label">Renombrados</span>
+          <span class="stat-value" id="stat-done">0</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-open-upload" class="btn btn-primary" title="Cargar y dividir nuevos archivos PDF escaneados">
+          <span class="btn-icon">📥</span>
+          <span>Cargar Escaneos</span>
+        </button>
+        <button id="btn-manage-alumnos" class="btn btn-outline" title="Ver o pegar la lista de alumnos que asistieron">
+          <span class="btn-icon">👥</span>
+          <span>Alumnos (<span id="count-alumnos">31</span>)</span>
+        </button>
+        <button id="btn-batch-analyze" class="btn btn-primary">
+          <span class="btn-icon">⚡</span>
+          <span>Analizar Siguientes 5</span>
+        </button>
+        <button id="btn-batch-rename" class="btn btn-success">
+          <span class="btn-icon">💾</span>
+          <span>Renombrar Listos</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Barra de Filtros y Búsqueda -->
+    <nav class="toolbar">
+      <!-- Filtro por Sesión / Tanda consecutiva -->
+      <div class="filter-group">
+        <select id="select-filter-sesion" class="filter-select" title="Filtrar por Sesión">
+          <option value="all">Sesión: Todas</option>
+        </select>
+      </div>
+
+      <!-- Filtro por Fecha (dinámico según los exámenes cargados) -->
+      <div class="filter-group">
+        <select id="select-filter-fecha" class="filter-select" title="Filtrar por Fecha">
+          <option value="all">Fecha: Todas</option>
+        </select>
+      </div>
+
+      <!-- Filtro por Estado -->
+      <div class="filter-group">
+        <button class="filter-btn active" data-status="all">Todos</button>
+        <button class="filter-btn" data-status="pendiente">Pendientes</button>
+        <button class="filter-btn" data-status="renombrado">Renombrados</button>
+      </div>
+
+      <!-- Filtro por Asignatura -->
+      <div class="filter-group">
+        <select id="select-filter-asig" class="filter-select" title="Filtrar por Asignatura">
+          <option value="all">Asignatura: Todas</option>
+        </select>
+      </div>
+
+      <!-- Filtro por Número de Examen -->
+      <div class="filter-group">
+        <select id="select-filter-num-ex" class="filter-select" title="Filtrar por Número de Examen">
+          <option value="all">Nº Examen: Todos</option>
+          <option value="1">EX1</option>
+          <option value="2">EX2</option>
+          <option value="3">EX3</option>
+          <option value="4">EX4</option>
+          <option value="5">EX5</option>
+          <option value="6">EX6</option>
+          <option value="7">EX7</option>
+          <option value="8">EX8</option>
+          <option value="9">EX9</option>
+          <option value="10">EX10</option>
+          <option value="11">EX11</option>
+          <option value="12">EX12</option>
+          <option value="13">EX13</option>
+          <option value="14">EX14</option>
+          <option value="15">EX15</option>
+        </select>
+      </div>
+
+      <!-- Buscador -->
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Buscar alumno, materia, nº de examen..." aria-label="Buscar exámenes">
+      </div>
+    </nav>
+
+    <!-- Barra de Progreso Global -->
+    <div id="progress-container" class="progress-container hidden">
+      <div class="progress-bar-wrapper">
+        <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+      </div>
+      <div class="progress-info">
+        <span id="progress-text">Procesando exámenes...</span>
+        <button id="btn-cancel-batch" class="btn-text">Detener</button>
+      </div>
+    </div>
+
+    <!-- Datalist para autocompletado instantáneo de alumnos -->
+    <datalist id="lista-alumnos"></datalist>
+
+    <!-- Contenedor Principal de Tarjetas de Examen -->
+    <main class="main-content">
+      <div id="exam-list" class="exam-list">
+        <!-- Renderizado dinámicamente por app.js -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Zoom de Cabecera -->
+  <div id="image-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Cabecera del Examen</h3>
+        <button id="modal-close" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <img id="modal-img" src="" alt="Cabecera ampliada">
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Pegar y Gestionar Alumnos Asistentes -->
+  <div id="modal-alumnos-container" class="modal hidden">
+    <div class="modal-backdrop" id="backdrop-alumnos"></div>
+    <div class="modal-content" style="max-width: 600px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3>📋 Alumnos Convocados / Asistentes</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Pega aquí la lista de alumnos desde Excel (uno por línea o separados por comas). La IA y el autocompletado usarán estos nombres.
+          </p>
+        </div>
+        <button id="modal-alumnos-close" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem; background: var(--bg-card); flex-direction: column; gap: 1rem;">
+        <textarea id="textarea-alumnos" rows="14" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.75rem; border-radius: var(--radius-sm); font-family: monospace; font-size: 0.9rem; resize: vertical;" placeholder="Pega los nombres aquí (un alumno por línea)..."></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span id="alumnos-count-preview" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">31 alumnos cargados</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btn-cancel-alumnos" class="btn btn-outline btn-sm">Cancelar</button>
+            <button id="btn-save-alumnos" class="btn btn-success btn-sm">💾 Guardar Lista</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Asistente: Carga y División de Escaneos -->
+  <div id="modal-upload-container" class="modal hidden">
+    <div class="modal-backdrop" id="backdrop-upload"></div>
+    <div class="modal-content" style="max-width: 940px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h3>📥 Cargar y Dividir Archivos Escaneados</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Introduce los PDFs multipágina del escáner. El sistema extraerá la fecha del nombre si existe o te pedirá asignarla para dividir cada hoja.
+          </p>
+        </div>
+        <button id="modal-upload-close" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem; background: var(--bg-card); flex-direction: column; gap: 1.25rem; overflow-y: auto;">
+        <!-- Banner Informativo de Nueva Sesión Consecutiva -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.1rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.5rem;">📁</span>
+            <div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                Nueva Tanda de Carga: <span id="upload-session-badge" style="background: var(--primary); color: white; padding: 0.15rem 0.6rem; border-radius: 4px; font-size: 0.82rem; font-weight: 600;">Sesión ...</span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem;">
+                Se creará automáticamente la subcarpeta <code id="upload-session-folder" style="color: var(--primary); font-weight: 600; background: rgba(0,0,0,0.05); padding: 0.1rem 0.3rem; border-radius: 3px;">Examenes_Renombrados/.../</code> para separar estos archivos.
+              </div>
+            </div>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Consecutivo automático</span>
+        </div>
+
+        <!-- Paso 1: Verificación de Alumnos -->
+        <div class="upload-step-box">
+          <div class="step-header">
+            <span class="step-badge">1</span>
+            <span class="step-title">Lista de Alumnos Convocados</span>
+          </div>
+          <div class="step-content" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; color: var(--text-main);">
+              Hay <strong id="upload-alumnos-count" style="color: var(--primary);">31</strong> alumnos en la lista activa para autocompletar.
+            </span>
+            <button id="btn-upload-edit-alumnos" type="button" onclick="openAlumnosModal()" class="btn btn-outline btn-sm">
+              👥 Revisar / Pegar Alumnos
+            </button>
+          </div>
+        </div>
+
+        <!-- Paso 2: Selección y Arrastre de PDFs -->
+        <div class="upload-step-box">
+          <div class="step-header">
+            <span class="step-badge">2</span>
+            <span class="step-title">Seleccionar Archivos Escaneados (.pdf)</span>
+          </div>
+          <div id="dropzone-area" class="dropzone-area">
+            <div class="dropzone-icon">📄</div>
+            <div class="dropzone-text">
+              <strong>Arrastra aquí los archivos PDF</strong> o haz clic para examinarlos
+            </div>
+            <span class="dropzone-sub">Puedes subir varios archivos escaneados a la vez (ej: 260907.pdf, scan_dia2.pdf)</span>
+            <input type="file" id="input-pdf-files" multiple accept=".pdf" style="display: none;">
+          </div>
+        </div>
+
+        <!-- Paso 3: Lista de Archivos, Fecha y Asignación de Materia / Nº Examen -->
+        <div id="upload-files-section" class="upload-step-box hidden">
+          <div class="step-header" style="justify-content: space-between;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="step-badge">3</span>
+                <span class="step-title">Archivos detectados, Fecha y Asignación en Bloque (Materia / Nº Examen)</span>
+              </div>
+              <p style="font-size: 0.77rem; color: var(--text-muted); margin-top: 0.2rem; margin-left: 1.85rem;">
+                💡 Si las hojas de un archivo son de la misma materia o examen, indícalo aquí y se asignarán a todas sus páginas.
+              </p>
+            </div>
+            <span id="upload-summary-count" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">0 archivos</span>
+          </div>
+
+          <div id="upload-files-list" class="upload-files-list">
+            <!-- Rellenado dinámicamente por app.js -->
+          </div>
+
+          <!-- Opciones de carga -->
+          <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; gap: 1.5rem; font-size: 0.82rem;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+              <input type="radio" name="upload-mode" value="acumular" checked>
+              <span>➕ Añadir a los exámenes actuales</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+              <input type="radio" name="upload-mode" value="nueva_convocatoria">
+              <span>🆕 Nueva convocatoria limpia (respalda los actuales)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Progreso durante la división -->
+        <div id="upload-progress-container" class="progress-container hidden" style="margin-top: 0;">
+          <div class="progress-bar-wrapper">
+            <div id="upload-progress-bar" class="progress-bar" style="width: 0%"></div>
+          </div>
+          <div class="progress-info">
+            <span id="upload-progress-text">Subiendo y dividiendo exámenes...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button id="btn-cancel-upload" class="btn btn-outline btn-sm">Cancelar</button>
+        <button id="btn-start-process-upload" class="btn btn-success" disabled>
+          <span class="btn-icon">🚀</span>
+          <span>Procesar y Dividir Exámenes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/public/app.js"></script>
+</body>
+</html>

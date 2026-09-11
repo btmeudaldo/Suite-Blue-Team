@@ -1,0 +1,37 @@
+# Variables de entorno y credenciales
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Datos pesados de escaneos y PDFs
+*.pdf
+Escaneos_Originales/
+Examenes_Divididos/
+Examenes_Renombrados/
+Historico_Convocatorias/
+Organizados/
+temp_split/
+thumbnails/
+
+# Archivos de datos de ejecución local
+estado_examenes.json
+
+# Archivos de imagen temporales y Excel locks
+scratch_*.png
+temp_*.png
+test_*.png
+~$*.xlsx
+*.xlsx
+
+# Sistema y editores
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

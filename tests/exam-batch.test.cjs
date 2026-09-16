@@ -54,3 +54,26 @@ test('batch button has one event handler', () => {
   const bindings = Number(tag.includes('onclick=')) + Number(source.includes("btnBatchRename.addEventListener('click', batchRenameAnalyzed)"));
   assert.equal(bindings, 1);
 });
+
+test('repeated clicks while a request is pending do not submit another batch', async () => {
+  const app = setup([complete()]);
+  await Promise.all([app.run(), app.run()]);
+  assert.equal(app.calls.length, 1);
+});
+
+test('unknown students require the existing confirmation before sending the batch', async () => {
+  const app = setup([complete({ alumno: 'NUEVO ALUMNO' })]);
+  let requestedName;
+  app.context.openConfirmAlumnoModal = name => { requestedName = name; };
+  await app.run();
+  assert.equal(requestedName, 'NUEVO ALUMNO');
+  assert.equal(app.calls.length, 0);
+});
+
+test('no confirmed files means no renamed records', async () => {
+  const items = [complete()];
+  const app = setup(items, { status: 'ok', renombrados: [] });
+  await app.run();
+  assert.equal(items[0].estado, 'pendiente');
+  assert.match(app.alerts.at(-1), /0 de 1/);
+});

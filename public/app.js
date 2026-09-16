@@ -621,17 +621,52 @@ async function batchAnalyzeNext(count = 5) {
   progressContainer.classList.add('hidden');
 }
 
-// Renombrar todos los exámenes analizados
+function isExamReadyToRename(item) {
+  const alumno = (item.alumno || '').trim();
+  return item.estado !== 'renombrado'
+    && alumno.length >= 3
+    && alumno.toUpperCase() !== 'PENDIENTE'
+    && Boolean((item.fecha || '').trim())
+    && Boolean((item.asignatura || '').trim())
+    && Boolean(String(item.numero_examen ?? '').trim());
+}
+
+let isBatchRenaming = false;
+
+// El flujo manual no requiere haber ejecutado el análisis por IA.
 async function batchRenameAnalyzed() {
-  const ready = examenes.filter(e => e.estado === 'analizado');
+  if (isBatchRenaming) return;
+  const ready = examenes.filter(isExamReadyToRename);
   if (ready.length === 0) {
-    alert('No hay exámenes con estado "Analizado" listos para renombrar.');
+    alert('No hay exámenes listos para renombrar. Completa fecha, alumno, asignatura y número de examen.');
+    return;
+  }
+
+  const unconfirmed = typeof openConfirmAlumnoModal === 'function' && ready.find(item => {
+    const alumno = quitarTildes(item.alumno.trim().toUpperCase());
+    return !listaAlumnosMemoria.some(name => quitarTildes(name.trim().toUpperCase()) === alumno)
+      && (typeof confirmedNewStudents === 'undefined' || !confirmedNewStudents.has(alumno));
+  });
+  if (unconfirmed) {
+    openConfirmAlumnoModal(
+      quitarTildes(unconfirmed.alumno.trim().toUpperCase()),
+      unconfirmed.id,
+      null,
+      () => batchRenameAnalyzed()
+    );
     return;
   }
 
   if (!confirm(`¿Deseas aplicar el renombrado a los ${ready.length} exámenes verificados?`)) {
     return;
   }
+
+  isBatchRenaming = true;
+  if (btnBatchRename) btnBatchRename.disabled = true;
+  ready.forEach(item => {
+    item.alumno = quitarTildes(item.alumno.trim().toUpperCase());
+    item.nombre_final = buildFinalName(item);
+  });
 
   try {
     const res = await fetch('/api/renombrar', {
@@ -640,14 +675,20 @@ async function batchRenameAnalyzed() {
       body: JSON.stringify({ items: ready })
     });
     const data = await res.json();
-    if (data.status === 'ok') {
-      ready.forEach(it => it.estado = 'renombrado');
-      updateStats();
-      renderExams();
-      alert(`¡Éxito! Se han renombrado ${ready.length} exámenes en la carpeta 'Examenes_Renombrados/'`);
+    if (!res.ok || data.status !== 'ok' || !Array.isArray(data.renombrados)) {
+      throw new Error(data.error || 'El servidor no confirmó el renombrado.');
     }
+    const renamedIds = new Set(data.renombrados.map(item => item.id));
+    const renamed = ready.filter(item => renamedIds.has(item.id));
+    renamed.forEach(item => item.estado = 'renombrado');
+    updateStats();
+    renderExams();
+    alert(`Se han renombrado ${renamed.length} de ${ready.length} exámenes en 'Examenes_Renombrados/'.${renamed.length < ready.length ? '\nLos restantes siguen pendientes. Comprueba que sus archivos originales estén disponibles.' : ''}`);
   } catch (err) {
     alert('Error al renombrar lote: ' + err.message);
+  } finally {
+    isBatchRenaming = false;
+    if (btnBatchRename) btnBatchRename.disabled = false;
   }
 }
 

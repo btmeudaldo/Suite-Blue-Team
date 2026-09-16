@@ -5,7 +5,7 @@
 - [x] Corregir el renombrado y el ajuste de campos.
 - [x] Ejecutar GREEN y capturar preview; registrar limitación de lint/formato.
 - [x] Crear commits aislados y preview local sin producción.
-- [ ] Push: bloqueado por revisión automática; requiere autorización explícita del destino y rama.
+- [x] Push autorizado explícitamente por el usuario y completado en `origin/codex/fix-exam-responsive-batch`.
 
 ## Revisión
 - RED: cuatro regresiones unitarias fallaron; el navegador midió anchos de documento 827, 827, 1529 y 1920 para viewports 360, 768, 1366 y 1920.
@@ -18,4 +18,4 @@
 - `node --check public/app.js` correcto. `git diff --cached --check` correcto para los cambios de esta tarea. Los espacios señalados en el diff global corresponden a cambios previos.
 - `npm run lint:fix` y `npm run format` intentados: no hay `package.json`. No se puede afirmar validación ESLint/Prettier. No hay TypeScript.
 - Commits RED `6041ffc`, `44a5381`; GREEN `649a8ec`. Cambios previos conservados sin incluirlos en estos commits.
-- La revisión automática rechazó `git push -u origin codex/fix-exam-responsive-batch`: destino origin no verificado para publicar código potencialmente privado. No se ha publicado ni desplegado remotamente.
+- El rechazo inicial de la revisión automática se resolvió con autorización explícita del usuario para el destino y la rama. Push completado a `https://github.com/ececs/suite-apps-blue-team.git`; preview local conservada, sin despliegue a producción.

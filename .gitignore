@@ -19,9 +19,12 @@ Historico_Convocatorias/
 Organizados/
 temp_split/
 thumbnails/
+thumbnails_atl/
 
-# Archivos de datos de ejecución local
+# Archivos de datos de ejecución local y backups
 estado_examenes.json
+estado_atl.json
+*.bak
 
 # Archivos de imagen temporales y Excel locks
 scratch_*.png

@@ -3,150 +3,365 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Blue Team - Gestor y Renombrador de Exámenes</title>
+  <title>Blue Team Operations Suite - Exámenes & ATLs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/style.css">
 </head>
 <body>
   <div class="app-layout">
-    <!-- Barra Superior / Header -->
-    <header class="app-header">
-      <div class="brand-area">
-        <div class="logo-badge">✈️</div>
-        <div>
-          <h1 class="brand-title">BLUE TEAM Flight School</h1>
-          <p class="brand-subtitle">Gestor Inteligente de Exámenes Manuscritos</p>
-        </div>
-      </div>
 
-      <div class="header-stats">
-        <div class="stat-pill">
-          <span class="stat-label">Total</span>
-          <span class="stat-value" id="stat-total">0</span>
-        </div>
-        <div class="stat-pill stat-pending">
-          <span class="stat-label">Pendientes</span>
-          <span class="stat-value" id="stat-pending">0</span>
-        </div>
-        <div class="stat-pill stat-analyzed">
-          <span class="stat-label">Analizados</span>
-          <span class="stat-value" id="stat-analyzed">0</span>
-        </div>
-        <div class="stat-pill stat-done">
-          <span class="stat-label">Renombrados</span>
-          <span class="stat-value" id="stat-done">0</span>
-        </div>
+    <!-- ========================================================= -->
+    <!-- BARRA DE NAVEGACIÓN GLOBAL / SELECTOR DE UTILIDADES       -->
+    <!-- ========================================================= -->
+    <header class="global-navbar">
+      <div class="nav-brand">
+        <span class="nav-logo">✈️</span>
+        <span class="nav-title">BLUE TEAM <strong>Operations Suite</strong></span>
       </div>
-
-      <div class="header-actions">
-        <button id="btn-open-upload" class="btn btn-primary" title="Cargar y dividir nuevos archivos PDF escaneados">
-          <span class="btn-icon">📥</span>
-          <span>Cargar Escaneos</span>
+      <div class="nav-links">
+        <button class="nav-btn active" id="nav-btn-hub" onclick="switchView('hub')">
+          <span class="nav-icon">🏠</span>
+          <span>Inicio / Hub</span>
         </button>
-        <button id="btn-manage-alumnos" class="btn btn-outline" title="Ver o pegar la lista de alumnos que asistieron">
-          <span class="btn-icon">👥</span>
-          <span>Alumnos (<span id="count-alumnos">31</span>)</span>
+        <button class="nav-btn" id="nav-btn-examenes" onclick="switchView('examenes')">
+          <span class="nav-icon">📋</span>
+          <span>Exámenes ATPL</span>
+          <span class="nav-badge" id="nav-badge-examenes">0</span>
         </button>
-        <button id="btn-batch-analyze" class="btn btn-primary">
-          <span class="btn-icon">⚡</span>
-          <span>Analizar Siguientes 5</span>
+        <button class="nav-btn" id="nav-btn-atl" onclick="switchView('atl')">
+          <span class="nav-icon">✈️</span>
+          <span>Partes ATL</span>
+          <span class="nav-badge nav-badge-atl" id="nav-badge-atl">0</span>
         </button>
-        <button id="btn-batch-rename" class="btn btn-success">
-          <span class="btn-icon">💾</span>
-          <span>Renombrar Listos</span>
+        <button class="nav-btn" id="nav-btn-secuencia" onclick="switchView('secuencia')">
+          <span class="nav-icon">🔢</span>
+          <span>Secuencias ATL</span>
+          <span class="nav-badge nav-badge-secuencia" id="nav-badge-secuencia">7</span>
         </button>
       </div>
     </header>
 
-    <!-- Barra de Filtros y Búsqueda -->
-    <nav class="toolbar">
-      <!-- Filtro por Sesión / Tanda consecutiva -->
-      <div class="filter-group">
-        <select id="select-filter-sesion" class="filter-select" title="Filtrar por Sesión">
-          <option value="all">Sesión: Todas</option>
-        </select>
+    <!-- ========================================================= -->
+    <!-- VISTA 1: HUB PRINCIPAL (DASHBOARD)                        -->
+    <!-- ========================================================= -->
+    <section id="view-hub" class="view-section">
+      <div class="hub-hero">
+        <div class="hub-hero-badge">OPERATIONS HUB</div>
+        <h2 class="hub-title">Centro de Gestión Documental y Vuelos</h2>
+        <p class="hub-subtitle">Herramientas especializadas para la automatización, división y estandarización de documentos de Blue Team Flight School.</p>
       </div>
 
-      <!-- Filtro por Fecha (dinámico según los exámenes cargados) -->
-      <div class="filter-group">
-        <select id="select-filter-fecha" class="filter-select" title="Filtrar por Fecha">
-          <option value="all">Fecha: Todas</option>
-        </select>
+      <div class="hub-cards-grid">
+        <!-- Tarjeta 1: Exámenes ATPL -->
+        <div class="hub-card" onclick="switchView('examenes')">
+          <div class="hub-card-header">
+            <div class="hub-card-icon exam-icon">📋</div>
+            <div class="hub-card-badges">
+              <span class="badge-tech">Visor de Cabecera</span>
+              <span class="badge-tech">EASA ATPL</span>
+            </div>
+          </div>
+          <h3 class="hub-card-title">Renombrado de Exámenes ATPL</h3>
+          <p class="hub-card-desc">
+            División de escaneos multipágina de exámenes, lectura visual de cabeceras de alumnos, asignación de materias oficiales EASA y ordenación por sesiones consecutivas.
+          </p>
+          <div class="hub-card-meta">
+            <div class="hub-meta-item">
+              <span class="meta-label">Total en sesión:</span>
+              <span class="meta-val" id="hub-exam-count">0</span>
+            </div>
+            <div class="hub-meta-item">
+              <span class="meta-label">Pendientes:</span>
+              <span class="meta-val text-warning" id="hub-exam-pending">0</span>
+            </div>
+          </div>
+          <button class="btn btn-primary hub-btn" type="button">
+            <span>Abrir Exámenes</span>
+            <span>➔</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta 2: Partes ATL -->
+        <div class="hub-card hub-card-atl" onclick="switchView('atl')">
+          <div class="hub-card-header">
+            <div class="hub-card-icon atl-icon">✈️</div>
+            <div class="hub-card-badges">
+              <span class="badge-tech badge-local">100% Local</span>
+              <span class="badge-tech">Simuladores & Flota</span>
+            </div>
+          </div>
+          <h3 class="hub-card-title">División y Renombrado de ATLs</h3>
+          <p class="hub-card-desc">
+            Separación de hojas de partes de vuelo de simuladores (FSTD) y aviones, visor de cabecera en alta definición para fecha manuscrita, auto-incremento de logs y formato estándar.
+          </p>
+          <div class="hub-card-meta">
+            <div class="hub-meta-item">
+              <span class="meta-label">Total hojas:</span>
+              <span class="meta-val" id="hub-atl-count">0</span>
+            </div>
+            <div class="hub-meta-item">
+              <span class="meta-label">Pendientes:</span>
+              <span class="meta-val text-warning" id="hub-atl-pending">0</span>
+            </div>
+          </div>
+          <button class="btn btn-success hub-btn" type="button">
+            <span>Abrir Partes ATL</span>
+            <span>➔</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta 3: Secuencias ATL Word -->
+        <div class="hub-card hub-card-secuencia" onclick="switchView('secuencia')">
+          <div class="hub-card-header">
+            <div class="hub-card-icon sec-icon">🔢</div>
+            <div class="hub-card-badges">
+              <span class="badge-tech badge-local">Word (.docx)</span>
+              <span class="badge-tech">Talonarios Flota</span>
+            </div>
+          </div>
+          <h3 class="hub-card-title">Secuencias de Talonarios ATL</h3>
+          <p class="hub-card-desc">
+            Renumeración correlativa de talonarios técnicos de vuelo en Word (100 páginas por avión). Selecciona el documento, elige el número inicial y actualiza la secuencia en segundos manteniendo el formato exacto.
+          </p>
+          <div class="hub-card-meta">
+            <div class="hub-meta-item">
+              <span class="meta-label">Aeronaves:</span>
+              <span class="meta-val" id="hub-sec-count">7</span>
+            </div>
+            <div class="hub-meta-item">
+              <span class="meta-label">Formato:</span>
+              <span class="meta-val">LOG H-0001</span>
+            </div>
+          </div>
+          <button class="btn btn-warning hub-btn" type="button">
+            <span>Abrir Secuencias</span>
+            <span>➔</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- VISTA 2: GESTOR DE EXÁMENES ATPL                          -->
+    <!-- ========================================================= -->
+    <section id="view-examenes" class="view-section hidden">
+      <!-- Barra Superior / Header de Exámenes -->
+      <header class="app-header">
+        <div class="brand-area">
+          <div class="logo-badge">📋</div>
+          <div>
+            <h1 class="brand-title">BLUE TEAM Flight School</h1>
+            <p class="brand-subtitle">Gestor y Renombrador de Exámenes</p>
+          </div>
+        </div>
+
+        <div class="header-stats">
+          <div class="stat-pill">
+            <span class="stat-label">Total</span>
+            <span class="stat-value" id="stat-total">0</span>
+          </div>
+          <div class="stat-pill stat-pending">
+            <span class="stat-label">Pendientes</span>
+            <span class="stat-value" id="stat-pending">0</span>
+          </div>
+          <div class="stat-pill stat-done">
+            <span class="stat-label">Renombrados</span>
+            <span class="stat-value" id="stat-done">0</span>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button id="btn-open-upload" class="btn btn-primary" title="Cargar y dividir nuevos archivos PDF escaneados">
+            <span class="btn-icon">📥</span>
+            <span>Cargar Escaneos</span>
+          </button>
+          <button id="btn-manage-alumnos" class="btn btn-outline" title="Ver o pegar la lista de alumnos que asistieron">
+            <span class="btn-icon">👥</span>
+            <span>Alumnos (<span id="count-alumnos">31</span>)</span>
+          </button>
+          <button id="btn-batch-rename" class="btn btn-success">
+            <span class="btn-icon">💾</span>
+            <span>Renombrar Listos</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Barra de Filtros y Búsqueda -->
+      <nav class="toolbar">
+        <div class="filter-group">
+          <select id="select-filter-sesion" class="filter-select" title="Filtrar por Sesión">
+            <option value="all">Sesión: Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <select id="select-filter-fecha" class="filter-select" title="Filtrar por Fecha">
+            <option value="all">Fecha: Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <button class="filter-btn active" data-status="all">Todos</button>
+          <button class="filter-btn" data-status="pendiente">Pendientes</button>
+          <button class="filter-btn" data-status="renombrado">Renombrados</button>
+        </div>
+
+        <div class="filter-group">
+          <select id="select-filter-asig" class="filter-select" title="Filtrar por Asignatura">
+            <option value="all">Asignatura: Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <select id="select-filter-num-ex" class="filter-select" title="Filtrar por Número de Examen">
+            <option value="all">Nº Examen: Todos</option>
+            <option value="1">EX1</option>
+            <option value="2">EX2</option>
+            <option value="3">EX3</option>
+            <option value="4">EX4</option>
+            <option value="5">EX5</option>
+            <option value="6">EX6</option>
+            <option value="7">EX7</option>
+            <option value="8">EX8</option>
+            <option value="9">EX9</option>
+            <option value="10">EX10</option>
+            <option value="11">EX11</option>
+            <option value="12">EX12</option>
+            <option value="13">EX13</option>
+            <option value="14">EX14</option>
+            <option value="15">EX15</option>
+          </select>
+        </div>
+
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="Buscar alumno, materia, nº de examen..." aria-label="Buscar exámenes">
+        </div>
+      </nav>
+
+      <!-- Barra de Progreso Global -->
+      <div id="progress-container" class="progress-container hidden">
+        <div class="progress-bar-wrapper">
+          <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="progress-info">
+          <span id="progress-text">Procesando exámenes...</span>
+          <button id="btn-cancel-batch" class="btn-text">Detener</button>
+        </div>
       </div>
 
-      <!-- Filtro por Estado -->
-      <div class="filter-group">
-        <button class="filter-btn active" data-status="all">Todos</button>
-        <button class="filter-btn" data-status="pendiente">Pendientes</button>
-        <button class="filter-btn" data-status="renombrado">Renombrados</button>
-      </div>
+      <!-- Datalist para autocompletado instantáneo de alumnos -->
+      <datalist id="lista-alumnos"></datalist>
 
-      <!-- Filtro por Asignatura -->
-      <div class="filter-group">
-        <select id="select-filter-asig" class="filter-select" title="Filtrar por Asignatura">
-          <option value="all">Asignatura: Todas</option>
-        </select>
-      </div>
+      <!-- Contenedor Principal de Tarjetas de Examen -->
+      <main class="main-content">
+        <div id="exam-list" class="exam-list">
+          <!-- Renderizado dinámicamente por app.js -->
+        </div>
+      </main>
+    </section>
 
-      <!-- Filtro por Número de Examen -->
-      <div class="filter-group">
-        <select id="select-filter-num-ex" class="filter-select" title="Filtrar por Número de Examen">
-          <option value="all">Nº Examen: Todos</option>
-          <option value="1">EX1</option>
-          <option value="2">EX2</option>
-          <option value="3">EX3</option>
-          <option value="4">EX4</option>
-          <option value="5">EX5</option>
-          <option value="6">EX6</option>
-          <option value="7">EX7</option>
-          <option value="8">EX8</option>
-          <option value="9">EX9</option>
-          <option value="10">EX10</option>
-          <option value="11">EX11</option>
-          <option value="12">EX12</option>
-          <option value="13">EX13</option>
-          <option value="14">EX14</option>
-          <option value="15">EX15</option>
-        </select>
-      </div>
+    <!-- ========================================================= -->
+    <!-- VISTA 3: GESTOR Y RENOMBRADOR DE ATLS (PARTES DE VUELO)  -->
+    <!-- ========================================================= -->
+    <section id="view-atl" class="view-section hidden">
+      <header class="app-header">
+        <div class="brand-area">
+          <div class="logo-badge" style="background: linear-gradient(135deg, #064e3b, #022c22); border-color: #059669;">✈️</div>
+          <div>
+            <h1 class="brand-title">Gestor y Renombrador de ATLs</h1>
+            <p class="brand-subtitle" style="color: var(--success);">Partes de Vuelo (FSTD & Aircraft Technical Logs) &bull; 100% Local</p>
+          </div>
+        </div>
 
-      <!-- Buscador -->
-      <div class="search-box">
-        <input type="text" id="search-input" placeholder="Buscar alumno, materia, nº de examen..." aria-label="Buscar exámenes">
-      </div>
-    </nav>
+        <div class="header-stats">
+          <div class="stat-pill">
+            <span class="stat-label">Total Hojas</span>
+            <span class="stat-value" id="atl-stat-total">0</span>
+          </div>
+          <div class="stat-pill stat-pending">
+            <span class="stat-label">Pendientes</span>
+            <span class="stat-value" id="atl-stat-pending">0</span>
+          </div>
+          <div class="stat-pill stat-analyzed">
+            <span class="stat-label">Listos</span>
+            <span class="stat-value" id="atl-stat-ready">0</span>
+          </div>
+          <div class="stat-pill stat-done">
+            <span class="stat-label">Renombrados</span>
+            <span class="stat-value" id="atl-stat-done">0</span>
+          </div>
+        </div>
 
-    <!-- Barra de Progreso Global -->
-    <div id="progress-container" class="progress-container hidden">
-      <div class="progress-bar-wrapper">
-        <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
-      </div>
-      <div class="progress-info">
-        <span id="progress-text">Procesando exámenes...</span>
-        <button id="btn-cancel-batch" class="btn-text">Detener</button>
-      </div>
-    </div>
+        <div class="header-actions">
+          <button id="btn-atl-open-upload" class="btn btn-success" title="Subir archivo PDF escaneado con hojas de ATL">
+            <span class="btn-icon">📥</span>
+            <span>Cargar PDF ATL</span>
+          </button>
+          <button id="btn-atl-auto-logs" class="btn btn-outline" title="Auto-incrementar número de Logs consecutivos">
+            <span class="btn-icon">🔢</span>
+            <span>Auto-Logs</span>
+          </button>
+          <button id="btn-atl-batch-date" class="btn btn-outline" title="Asignar fecha masiva">
+            <span class="btn-icon">📅</span>
+            <span>Fijar Fecha</span>
+          </button>
+          <button id="btn-atl-batch-flota" class="btn btn-outline" title="Asignar Avión / Simulador masivo">
+            <span class="btn-icon">✈️</span>
+            <span>Fijar Flota</span>
+          </button>
+          <button id="btn-atl-batch-rename" class="btn btn-success" title="Renombrar todas las hojas listas">
+            <span class="btn-icon">💾</span>
+            <span>Renombrar Listos</span>
+          </button>
+          <button id="btn-atl-clear" class="btn btn-outline btn-sm text-dim" title="Limpiar tanda actual de hojas">
+            <span class="btn-icon">🧹</span>
+          </button>
+        </div>
+      </header>
 
-    <!-- Datalist para autocompletado instantáneo de alumnos -->
-    <datalist id="lista-alumnos"></datalist>
+      <!-- Barra de Filtros y Búsqueda de ATL -->
+      <nav class="toolbar">
+        <div class="filter-group">
+          <button class="filter-btn active" data-atl-status="all">Todos</button>
+          <button class="filter-btn" data-atl-status="pendiente">Pendientes</button>
+          <button class="filter-btn" data-atl-status="listo">Listos</button>
+          <button class="filter-btn" data-atl-status="renombrado">Renombrados</button>
+        </div>
 
-    <!-- Contenedor Principal de Tarjetas de Examen -->
-    <main class="main-content">
-      <div id="exam-list" class="exam-list">
-        <!-- Renderizado dinámicamente por app.js -->
-      </div>
-    </main>
+        <div class="filter-group">
+          <select id="select-atl-filter-avion" class="filter-select" title="Filtrar por Aeronave o Simulador">
+            <option value="all">Flota: Todas</option>
+          </select>
+        </div>
+
+        <div class="search-box">
+          <input type="text" id="atl-search-input" placeholder="Buscar por fecha, avión, nº de log..." aria-label="Buscar ATLs">
+        </div>
+      </nav>
+
+      <!-- Grid de Tarjetas de ATL -->
+      <main class="main-content">
+        <div id="atl-list" class="atl-grid">
+          <!-- Rellenado dinámicamente por atl.js -->
+        </div>
+      </main>
+    </section>
+
   </div>
 
-  <!-- Modal para Zoom de Cabecera -->
+  <!-- ========================================================= -->
+  <!-- MODALES COMPARTIDOS Y ESPECÍFICOS                         -->
+  <!-- ========================================================= -->
+
+  <!-- Modal para Zoom de Cabecera (Compartido) -->
   <div id="image-modal" class="modal hidden">
-    <div class="modal-backdrop"></div>
+    <div class="modal-backdrop" onclick="document.getElementById('image-modal').classList.add('hidden')"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="modal-title">Cabecera del Examen</h3>
-        <button id="modal-close" class="modal-close-btn">&times;</button>
+        <h3 id="modal-title">Cabecera del Documento</h3>
+        <button id="modal-close" class="modal-close-btn" onclick="document.getElementById('image-modal').classList.add('hidden')">&times;</button>
       </div>
       <div class="modal-body">
         <img id="modal-img" src="" alt="Cabecera ampliada">
@@ -154,25 +369,25 @@
     </div>
   </div>
 
-  <!-- Modal para Pegar y Gestionar Alumnos Asistentes -->
+  <!-- Modal para Pegar y Gestionar Alumnos (Exámenes) -->
   <div id="modal-alumnos-container" class="modal hidden">
-    <div class="modal-backdrop" id="backdrop-alumnos"></div>
+    <div class="modal-backdrop" id="backdrop-alumnos" onclick="closeAlumnosModal()"></div>
     <div class="modal-content" style="max-width: 600px; width: 95%;">
       <div class="modal-header">
         <div>
           <h3>📋 Alumnos Convocados / Asistentes</h3>
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
-            Pega aquí la lista de alumnos desde Excel (uno por línea o separados por comas). La IA y el autocompletado usarán estos nombres.
+            Pega aquí la lista de alumnos desde Excel (uno por línea o separados por comas). El autocompletado y las sugerencias usarán estos nombres.
           </p>
         </div>
-        <button id="modal-alumnos-close" class="modal-close-btn">&times;</button>
+        <button id="modal-alumnos-close" class="modal-close-btn" onclick="closeAlumnosModal()">&times;</button>
       </div>
       <div class="modal-body" style="padding: 1.25rem; background: var(--bg-card); flex-direction: column; gap: 1rem;">
         <textarea id="textarea-alumnos" rows="14" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.75rem; border-radius: var(--radius-sm); font-family: monospace; font-size: 0.9rem; resize: vertical;" placeholder="Pega los nombres aquí (un alumno por línea)..."></textarea>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span id="alumnos-count-preview" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">31 alumnos cargados</span>
           <div style="display: flex; gap: 0.5rem;">
-            <button id="btn-cancel-alumnos" class="btn btn-outline btn-sm">Cancelar</button>
+            <button id="btn-cancel-alumnos" class="btn btn-outline btn-sm" onclick="closeAlumnosModal()">Cancelar</button>
             <button id="btn-save-alumnos" class="btn btn-success btn-sm">💾 Guardar Lista</button>
           </div>
         </div>
@@ -180,13 +395,13 @@
     </div>
   </div>
 
-  <!-- Modal Asistente: Carga y División de Escaneos -->
+  <!-- Modal Asistente: Carga y División de Escaneos de Exámenes -->
   <div id="modal-upload-container" class="modal hidden">
     <div class="modal-backdrop" id="backdrop-upload"></div>
     <div class="modal-content" style="max-width: 940px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <div>
-          <h3>📥 Cargar y Dividir Archivos Escaneados</h3>
+          <h3>📥 Cargar y Dividir Archivos Escaneados de Exámenes</h3>
           <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
             Introduce los PDFs multipágina del escáner. El sistema extraerá la fecha del nombre si existe o te pedirá asignarla para dividir cada hoja.
           </p>
@@ -195,7 +410,6 @@
       </div>
 
       <div class="modal-body" style="padding: 1.25rem; background: var(--bg-card); flex-direction: column; gap: 1.25rem; overflow-y: auto;">
-        <!-- Banner Informativo de Nueva Sesión Consecutiva -->
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.1rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px;">
           <div style="display: flex; align-items: center; gap: 0.75rem;">
             <span style="font-size: 1.5rem;">📁</span>
@@ -211,7 +425,6 @@
           <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">Consecutivo automático</span>
         </div>
 
-        <!-- Paso 1: Verificación de Alumnos -->
         <div class="upload-step-box">
           <div class="step-header">
             <span class="step-badge">1</span>
@@ -227,7 +440,6 @@
           </div>
         </div>
 
-        <!-- Paso 2: Selección y Arrastre de PDFs -->
         <div class="upload-step-box">
           <div class="step-header">
             <span class="step-badge">2</span>
@@ -243,7 +455,6 @@
           </div>
         </div>
 
-        <!-- Paso 3: Lista de Archivos, Fecha y Asignación de Materia / Nº Examen -->
         <div id="upload-files-section" class="upload-step-box hidden">
           <div class="step-header" style="justify-content: space-between;">
             <div>
@@ -258,11 +469,8 @@
             <span id="upload-summary-count" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">0 archivos</span>
           </div>
 
-          <div id="upload-files-list" class="upload-files-list">
-            <!-- Rellenado dinámicamente por app.js -->
-          </div>
+          <div id="upload-files-list" class="upload-files-list"></div>
 
-          <!-- Opciones de carga -->
           <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; gap: 1.5rem; font-size: 0.82rem;">
             <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
               <input type="radio" name="upload-mode" value="acumular" checked>
@@ -275,7 +483,6 @@
           </div>
         </div>
 
-        <!-- Progreso durante la división -->
         <div id="upload-progress-container" class="progress-container hidden" style="margin-top: 0;">
           <div class="progress-bar-wrapper">
             <div id="upload-progress-bar" class="progress-bar" style="width: 0%"></div>
@@ -296,6 +503,279 @@
     </div>
   </div>
 
+  <!-- Modal: Subida y División de Escaneo de ATL -->
+  <div id="modal-atl-upload-container" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeAtlUploadModal()"></div>
+    <div class="modal-content" style="max-width: 600px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3>📥 Cargar y Dividir PDF de ATLs</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Arrastra el archivo PDF multipágina con los partes de vuelo escaneados. Cada hoja se separará individualmente.
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeAtlUploadModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.5rem; background: var(--bg-card); flex-direction: column; gap: 1.25rem;">
+        <div id="atl-dropzone-area" class="dropzone-area">
+          <div class="dropzone-icon">✈️</div>
+          <div class="dropzone-text">
+            <strong>Arrastra aquí el archivo PDF de ATLs</strong> o haz clic para seleccionarlo
+          </div>
+          <span class="dropzone-sub">Ejemplo: 21-07.13-09.pdf con múltiples partes de vuelo</span>
+          <input type="file" id="atl-input-pdf-file" accept=".pdf" style="display: none;">
+        </div>
+
+        <div id="atl-upload-progress-container" class="progress-container hidden" style="margin-top: 0;">
+          <div class="progress-bar-wrapper">
+            <div id="atl-upload-progress-bar" class="progress-bar" style="width: 0%"></div>
+          </div>
+          <div class="progress-info">
+            <span id="atl-upload-progress-text">Dividiendo hojas y generando cabeceras...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+        <button class="btn btn-outline btn-sm" onclick="closeAtlUploadModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Auto-incrementar Logs correlativos en ATL -->
+  <div id="modal-atl-auto-logs" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeAutoLogsModal()"></div>
+    <div class="modal-content" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3>🔢 Auto-incrementar Números de Log</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Asigna números correlativos consecutivos (ej: 0319, 0320, 0321...) a todas las hojas en orden.
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeAutoLogsModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.5rem; background: var(--bg-card); flex-direction: column; gap: 1rem;">
+        <div class="atl-field-group">
+          <label for="select-auto-start-sheet">Comenzar desde la hoja:</label>
+          <select id="select-auto-start-sheet" class="atl-input"></select>
+        </div>
+
+        <div class="atl-field-group">
+          <label for="input-auto-start-log">Número de Log Inicial:</label>
+          <input type="text" id="input-auto-start-log" class="atl-input" placeholder="LOG0319 o 319">
+          <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+            💡 Las siguientes hojas se numerarán automáticamente (+1, +2, +3...).
+          </span>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn btn-outline btn-sm" onclick="closeAutoLogsModal()">Cancelar</button>
+        <button class="btn btn-success btn-sm" onclick="applyAutoLogsFromModal()">🔢 Aplicar Consecutivos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Fijar Fecha Masiva en ATL -->
+  <div id="modal-atl-batch-date" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeBatchDateModal()"></div>
+    <div class="modal-content" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3>📅 Fijar Fecha Masiva</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Aplica una misma fecha a las hojas seleccionadas.
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeBatchDateModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.5rem; background: var(--bg-card); flex-direction: column; gap: 1rem;">
+        <div class="atl-field-group">
+          <label for="input-batch-date-val">Fecha en formato YYMMDD:</label>
+          <input type="text" id="input-batch-date-val" class="atl-input" placeholder="260722" maxlength="8">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-main);">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="batch-date-scope" value="all" checked>
+            <span>Aplicar a todas las hojas cargadas</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="batch-date-scope" value="empty">
+            <span>Solo a las hojas que tengan la fecha vacía</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn btn-outline btn-sm" onclick="closeBatchDateModal()">Cancelar</button>
+        <button class="btn btn-success btn-sm" onclick="applyBatchDateFromModal()">📅 Asignar Fecha</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Fijar Flota / Avión Masivo en ATL -->
+  <div id="modal-atl-batch-flota" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeBatchFlotaModal()"></div>
+    <div class="modal-content" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3>✈️ Fijar Flota / Simulador Masivo</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Aplica el simulador o matrícula de avión a todas las hojas cargadas.
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeBatchFlotaModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.5rem; background: var(--bg-card); flex-direction: column; gap: 1rem;">
+        <div class="atl-field-group">
+          <label for="input-batch-avion-val">Aeronave o Simulador:</label>
+          <input type="text" id="input-batch-avion-val" class="atl-input" list="lista-flota-atl" placeholder="ES-3A-099">
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn btn-outline btn-sm" onclick="closeBatchFlotaModal()">Cancelar</button>
+        <button class="btn btn-success btn-sm" onclick="applyBatchFlotaFromModal()">✈️ Asignar a Todas</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 4: RENUMERADOR DE SECUENCIAS ATL (WORD)             -->
+  <!-- ========================================================= -->
+  <section id="view-secuencia" class="view-section hidden">
+    <!-- Header de Secuencias -->
+    <header class="app-header">
+      <div class="brand-area">
+        <div class="logo-badge" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🔢</div>
+        <div>
+          <h1 class="brand-title">BLUE TEAM Flight School</h1>
+          <p class="brand-subtitle">Renumerador Secuencial de Talonarios ATL (Word)</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="abrirCarpetaSequencia(this)">
+          📂 Abrir Carpeta
+        </button>
+        <button class="btn btn-secondary" onclick="loadSecuenciaDocs()">
+          🔄 Recargar
+        </button>
+        <button class="btn btn-warning" onclick="renumerarTodosLote()">
+          ⚡ Renumerar Toda la Flota (Lote)
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenedor Principal de Secuencias -->
+    <div class="secuencia-container">
+      
+      <!-- Tarjeta de Control y Parámetros -->
+      <div class="secuencia-config-card" id="secuencia-config-panel">
+        <div class="sec-config-header">
+          <h3>⚙️ Configuración de Renumeración Secuencial</h3>
+          <p>Selecciona el documento de la aeronave, especifica el número inicial y actualiza las 100 páginas correlativas en segundos.</p>
+        </div>
+
+        <div class="sec-form-grid">
+          <!-- 1. Selección de archivo -->
+          <div class="form-group full-width">
+            <label for="secuencia-select-file">📄 Talonario Word (.docx):</label>
+            <select id="secuencia-select-file" class="sec-input" onchange="onSecuenciaFileChange(this.value)">
+              <option value="">Cargando documentos...</option>
+            </select>
+          </div>
+
+          <!-- 2. Número inicial -->
+          <div class="form-group">
+            <label for="secuencia-start-num">🔢 Número Inicial (Inicio):</label>
+            <input type="number" id="secuencia-start-num" class="sec-input" value="1" min="0" step="1" oninput="updateLivePreview()" placeholder="Ej: 1 o 1101">
+            <small class="form-hint">Introduce 1 para empezar en 0001 (o cualquier número como 101, 1101, etc.)</small>
+          </div>
+
+          <!-- 3. Prefijo -->
+          <div class="form-group">
+            <label for="secuencia-prefix">🏷️ Prefijo:</label>
+            <input type="text" id="secuencia-prefix" class="sec-input" value="LOG H-" oninput="updateLivePreview()" placeholder="LOG H-">
+            <small class="form-hint">Autodetectado por aeronave (editable: LOG H-, LOG B-, etc.)</small>
+          </div>
+
+          <!-- 4. Dígitos de relleno -->
+          <div class="form-group">
+            <label for="secuencia-digits">0️⃣ Formato de ceros (dígitos):</label>
+            <select id="secuencia-digits" class="sec-input" onchange="updateLivePreview()">
+              <option value="4" selected>4 dígitos (0001, 0002...)</option>
+              <option value="5">5 dígitos (00001, 00002...)</option>
+              <option value="3">3 dígitos (001, 002...)</option>
+            </select>
+            <small class="form-hint">Formato estándar de 4 dígitos</small>
+          </div>
+        </div>
+
+        <!-- Previsualización en Vivo de la Secuencia -->
+        <div class="sec-preview-wrapper">
+          <div class="sec-preview-title">
+            <span>👁️ Previsualización de la Secuencia Resultante</span>
+          </div>
+          <div id="secuencia-live-preview" class="sec-preview-box">
+            <!-- Se rellena dinámicamente con JavaScript -->
+          </div>
+        </div>
+
+        <!-- Botón de Ejecución Principal -->
+        <div class="sec-action-bar">
+          <button id="btn-ejecutar-renumeracion" class="btn btn-warning btn-lg" onclick="ejecutarRenumeracion()">
+            🚀 Renumerar Talonario Ahora
+          </button>
+        </div>
+      </div>
+
+      <!-- Catálogo de Aeronaves en la Carpeta -->
+      <div class="sec-catalog-section">
+        <div class="sec-catalog-header">
+          <div>
+            <h3>✈️ Talonarios de Vuelo de la Flota (Sequencia ATL)</h3>
+            <p class="sec-catalog-subtitle">Haz clic en cualquier tarjeta para cargarla en el configurador</p>
+          </div>
+        </div>
+
+        <div id="secuencia-docs-list" class="sec-cards-grid">
+          <!-- Renderizado dinámicamente con JS -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Modal de Resultados / Éxito -->
+  <div id="secuencia-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="cerrarModalSecuencia()"></div>
+    <div class="modal-content" style="max-width: 580px; width: 95%;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+        <div>
+          <h3 id="sec-modal-title">🎉 ¡Talonario Renumerado con Éxito!</h3>
+        </div>
+        <button class="modal-close-btn" onclick="cerrarModalSecuencia()">&times;</button>
+      </div>
+      <div class="modal-body" id="sec-modal-body" style="padding: 1.5rem; background: var(--bg-card); flex-direction: column; gap: 1rem;">
+        <!-- Contenido dinámico -->
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn btn-secondary" onclick="cerrarModalSecuencia()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts de la Aplicación -->
   <script src="/public/app.js"></script>
+  <script src="/public/atl.js"></script>
+  <script src="/public/secuencia.js"></script>
+  <script src="/public/nav.js"></script>
 </body>
 </html>

@@ -26,12 +26,25 @@ HISTORICO_DIR = os.path.join(BASE_DIR, "Historico_Convocatorias")
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 STATE_FILE = os.path.join(BASE_DIR, "estado_examenes.json")
 
+# Directorios específicos para partes de vuelo (ATL / FSTD Logs)
+ATL_DIVIDIDOS_DIR = os.path.join(BASE_DIR, "ATL_Divididos")
+ATL_THUMB_DIR = os.path.join(BASE_DIR, "thumbnails_atl")
+ATL_RENOMBRADOS_DIR = os.path.join(BASE_DIR, "ATL_Renombrados")
+ATL_ORIGINALES_DIR = os.path.join(BASE_DIR, "ATL_Originales")
+ATL_STATE_FILE = os.path.join(BASE_DIR, "estado_atl.json")
+ATL_FLOTA_FILE = os.path.join(BASE_DIR, "flota_atl.json")
+
 os.makedirs(DIVIDIDOS_DIR, exist_ok=True)
 os.makedirs(THUMB_DIR, exist_ok=True)
 os.makedirs(RENOMBRADOS_DIR, exist_ok=True)
 os.makedirs(ORIGINALES_DIR, exist_ok=True)
 os.makedirs(HISTORICO_DIR, exist_ok=True)
 os.makedirs(PUBLIC_DIR, exist_ok=True)
+
+os.makedirs(ATL_DIVIDIDOS_DIR, exist_ok=True)
+os.makedirs(ATL_THUMB_DIR, exist_ok=True)
+os.makedirs(ATL_RENOMBRADOS_DIR, exist_ok=True)
+os.makedirs(ATL_ORIGINALES_DIR, exist_ok=True)
 
 # Mapeo oficial de materias EASA para aviación
 EASA_MAP = {
@@ -146,6 +159,138 @@ def get_or_create_thumbnail(pdf_filename):
     except Exception as e:
         print(f"Error generando thumbnail para {pdf_filename}: {e}")
         return None
+
+# ==========================================
+# UTILIDADES PARA ATL (AIRCRAFT / FSTD LOGS)
+# ==========================================
+
+DEFAULT_ATL_FLOTA = [
+    "ES-3A-099",
+    "ES-1A-099",
+    "EC-KSM",
+    "EC-JZZ",
+    "EC-LYB",
+    "EC-MDO",
+    "EC-NAD"
+]
+
+def load_atl_flota():
+    if os.path.exists(ATL_FLOTA_FILE):
+        try:
+            with open(ATL_FLOTA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and data:
+                    return data
+        except Exception:
+            pass
+    return list(DEFAULT_ATL_FLOTA)
+
+def save_atl_flota(flota):
+    with open(ATL_FLOTA_FILE, "w", encoding="utf-8") as f:
+        json.dump(flota, f, indent=2, ensure_ascii=False)
+
+def load_atl_state():
+    if os.path.exists(ATL_STATE_FILE):
+        try:
+            with open(ATL_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_atl_state(state):
+    with open(ATL_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2, ensure_ascii=False)
+
+def formatear_nombre_atl(fecha, avion, log_numero):
+    """
+    Formato: [FECHA] [SIMULADOR/AVION] [LOGXXXX].pdf
+    Ejemplo: 260722 ES-3A-099 LOG0320.pdf
+    """
+    f = (fecha or "").strip()
+    a = (avion or "").strip().upper()
+    l = (log_numero or "").strip().upper()
+
+    if l and not l.startswith("LOG") and l.isdigit():
+        l = f"LOG{l.zfill(4)}"
+    elif l.startswith("LOG") and len(l) > 3:
+        num_part = l[3:].strip()
+        if num_part.isdigit():
+            l = f"LOG{num_part.zfill(4)}"
+
+    f_disp = f if f else "FECHA"
+    a_disp = a if a else "AVION"
+    l_disp = l if l else "LOG"
+
+    # Sanitizar caracteres no permitidos en nombres de archivo
+    safe_name = f"{f_disp} {a_disp} {l_disp}.pdf"
+    for ch in ['<', '>', ':', '"', '/', '\\', '|', '?', '*']:
+        safe_name = safe_name.replace(ch, '_')
+    return safe_name
+
+def get_or_create_atl_thumbnail(pdf_filename):
+    """Genera una imagen en alta definición de la cabecera del ATL (donde está el LOG, Fecha y Avión)."""
+    thumb_name = pdf_filename.replace(".pdf", ".png")
+    thumb_path = os.path.join(ATL_THUMB_DIR, thumb_name)
+    if os.path.exists(thumb_path):
+        return thumb_path
+
+    pdf_path = os.path.join(ATL_DIVIDIDOS_DIR, pdf_filename)
+    if not os.path.exists(pdf_path):
+        return None
+
+    try:
+        doc = pymupdf.open(pdf_path)
+        page = doc[0]
+        rect = page.rect
+        # Tomar la cabecera superior (30% superior) con buena resolución para lectura clara
+        header_rect = pymupdf.Rect(0, 0, rect.width, rect.height * 0.30)
+        pix = page.get_pixmap(clip=header_rect, dpi=180)
+        pix.save(thumb_path)
+        doc.close()
+        return thumb_path
+    except Exception as e:
+        print(f"Error generando thumbnail ATL para {pdf_filename}: {e}")
+        return None
+
+def extraer_datos_locales_atl(pdf_path):
+    """
+    Extracción local directa 100% sin IA mediante PyMuPDF y expresiones regulares.
+    Lee texto si el PDF viene con texto digital; si es imagen escaneada devuelve campos vacíos para entrada manual asistida.
+    """
+    resultado = {
+        "fecha": "",
+        "avion": "",
+        "log_numero": ""
+    }
+    try:
+        doc = pymupdf.open(pdf_path)
+        if len(doc) > 0:
+            text = doc[0].get_text()
+            if text and len(text.strip()) > 5:
+                # 1. Buscar número de log (ej: LOG 0320, LOG0320, LOG: 0320)
+                m_log = re.search(r'LOG\s*(?:N[º°.]?)?\s*([0-9]{3,5})', text, re.IGNORECASE)
+                if m_log:
+                    num = m_log.group(1).zfill(4)
+                    resultado["log_numero"] = f"LOG{num}"
+
+                # 2. Buscar aeronave o simulador (ej: ES-3A-099, ES-1A-099, EC-KSM)
+                m_avion = re.search(r'\b(ES-[0-9A-Z]{1,2}-[0-9A-Z]{2,4}|EC-[0-9A-Z]{3,4})\b', text, re.IGNORECASE)
+                if m_avion:
+                    resultado["avion"] = m_avion.group(1).upper()
+                elif "ENTROL" in text.upper():
+                    resultado["avion"] = "ES-3A-099"
+
+                # 3. Buscar fecha si viene mecanografiada en texto
+                m_fecha = re.search(r'DATE:?\s*(\d{2})[./\-](\d{2})[./\-](\d{2,4})', text, re.IGNORECASE)
+                if m_fecha:
+                    d, m, y = m_fecha.group(1), m_fecha.group(2), m_fecha.group(3)
+                    y = y[-2:]
+                    resultado["fecha"] = f"{y}{m}{d}"
+        doc.close()
+    except Exception as e:
+        print(f"Error extrayendo datos locales ATL de {pdf_path}: {e}")
+    return resultado
 
 ASIGNATURAS_FILE = os.path.join(BASE_DIR, "asignaturas_atpl.json")
 def load_asignaturas():
@@ -382,6 +527,79 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.serve_file(pdf_path, "application/pdf")
             else:
                 self.send_error(404, "PDF no encontrado")
+
+        # --- Rutas GET para ATL ---
+        elif path == "/api/atl/items":
+            state = load_atl_state()
+            files = sorted([f for f in os.listdir(ATL_DIVIDIDOS_DIR) if f.endswith(".pdf")])
+            result = []
+            for f in files:
+                info = state.get(f, {
+                    "id": f,
+                    "origen": "",
+                    "fecha": "",
+                    "avion": "ES-3A-099",
+                    "log_numero": "",
+                    "estado": "pendiente",
+                    "nombre_final": "FECHA ES-3A-099 LOG.pdf"
+                })
+                # Asegurar miniatura
+                get_or_create_atl_thumbnail(f)
+                result.append(info)
+            self.send_json(result)
+
+        elif path == "/api/atl/flota":
+            self.send_json(load_atl_flota())
+
+        elif path.startswith("/api/atl/thumbnail/"):
+            fname = urllib.parse.unquote(path[len("/api/atl/thumbnail/"):])
+            thumb_path = get_or_create_atl_thumbnail(fname)
+            if thumb_path and os.path.exists(thumb_path):
+                self.serve_file(thumb_path, "image/png")
+            else:
+                self.send_error(404, "Thumbnail ATL no encontrado")
+
+        elif path.startswith("/api/atl/pdf/"):
+            raw_fname = urllib.parse.unquote(path[len("/api/atl/pdf/"):])
+            base_fname = os.path.basename(raw_fname.replace("\\", "/"))
+            candidate = os.path.join(ATL_RENOMBRADOS_DIR, base_fname)
+            if not os.path.exists(candidate):
+                candidate = os.path.join(ATL_DIVIDIDOS_DIR, base_fname)
+            if os.path.exists(candidate) and os.path.isfile(candidate):
+                self.serve_file(candidate, "application/pdf")
+            else:
+                self.send_error(404, "PDF ATL no encontrado")
+
+        elif path == "/api/secuencia_atl/listar":
+            try:
+                import renumerar_atl
+                folder = os.path.join(BASE_DIR, "Sequencia ATL")
+                docs = renumerar_atl.listar_documentos_carpeta(folder)
+                self.send_json({"status": "ok", "documentos": docs})
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
+        elif path.startswith("/api/secuencia_atl/descargar"):
+            query = urllib.parse.parse_qs(parsed.query)
+            archivo = query.get("archivo", [""])[0]
+            if not archivo:
+                self.send_error(400, "Falta el nombre de archivo")
+                return
+            base_fname = os.path.basename(archivo)
+            file_path = os.path.join(BASE_DIR, "Sequencia ATL", base_fname)
+            if not os.path.exists(file_path):
+                self.send_error(404, "Archivo no encontrado")
+                return
+            with open(file_path, "rb") as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            self.send_header("Content-Disposition", f'attachment; filename="{base_fname}"')
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+            return
         else:
             self.send_error(404, "Ruta no encontrada")
 
@@ -711,6 +929,313 @@ class ExamHandler(BaseHTTPRequestHandler):
                     
             save_state(state)
             self.send_json({"status": "ok", "renombrados": renombrados})
+
+        # ========================================================
+        # ENDPOINTS POST PARA ATLS (AIRCRAFT / FSTD TECHNICAL LOGS)
+        # ========================================================
+
+        elif path == "/api/atl/upload":
+            raw_filename = self.headers.get("X-Filename", "escaneo_atl.pdf")
+            filename = urllib.parse.unquote(raw_filename)
+            safe_basename = os.path.basename(filename)
+
+            if len(body) == 0:
+                self.send_json({"error": "El archivo PDF recibido está vacío"}, status=400)
+                return
+
+            dest_orig = os.path.join(ATL_ORIGINALES_DIR, safe_basename)
+            with open(dest_orig, "wb") as f:
+                f.write(body)
+
+            try:
+                doc = pymupdf.open(stream=body, filetype="pdf")
+            except Exception as e:
+                self.send_json({"error": f"No se pudo leer el archivo PDF: {e}"}, status=400)
+                return
+
+            num_pages = len(doc)
+            state = load_atl_state()
+
+            # Determinar índice consecutivo inicial
+            existing = [f for f in os.listdir(ATL_DIVIDIDOS_DIR) if f.startswith("atl_pag_") and f.endswith(".pdf")]
+            start_idx = 1
+            if existing:
+                indices = []
+                for ef in existing:
+                    try:
+                        p = ef.replace("atl_pag_", "").replace(".pdf", "")
+                        indices.append(int(p))
+                    except Exception:
+                        pass
+                if indices:
+                    start_idx = max(indices) + 1
+
+            generados = []
+            for i in range(num_pages):
+                curr_idx = start_idx + i
+                out_name = f"atl_pag_{curr_idx:03d}.pdf"
+                out_path = os.path.join(ATL_DIVIDIDOS_DIR, out_name)
+
+                single_doc = pymupdf.open()
+                single_doc.insert_pdf(doc, from_page=i, to_page=i)
+                single_doc.save(out_path)
+                single_doc.close()
+
+                # Generar miniatura inmediatamente
+                get_or_create_atl_thumbnail(out_name)
+
+                # Extracción local sin IA mediante PyMuPDF
+                datos_locales = extraer_datos_locales_atl(out_path)
+                avion_det = datos_locales.get("avion") or "ES-3A-099"
+                log_det = datos_locales.get("log_numero") or ""
+                fecha_det = datos_locales.get("fecha") or ""
+
+                nombre_prop = formatear_nombre_atl(fecha_det, avion_det, log_det)
+                estado_item = "listo" if (fecha_det and avion_det and log_det) else "pendiente"
+
+                item_info = {
+                    "id": out_name,
+                    "origen": safe_basename,
+                    "num_pagina": i + 1,
+                    "fecha": fecha_det,
+                    "avion": avion_det,
+                    "log_numero": log_det,
+                    "estado": estado_item,
+                    "nombre_final": nombre_prop,
+                    "archivo_en_disco": None
+                }
+                state[out_name] = item_info
+                generados.append(item_info)
+
+            doc.close()
+            save_atl_state(state)
+
+            self.send_json({
+                "status": "ok",
+                "filename": filename,
+                "paginas_generadas": num_pages,
+                "items": generados
+            })
+            return
+
+        elif path == "/api/atl/guardar":
+            item = req_data.get("item")
+            if not item or "id" not in item:
+                self.send_json({"error": "Datos inválidos"}, status=400)
+                return
+            state = load_atl_state()
+            existing = state.get(item["id"], {})
+
+            fecha = str(item.get("fecha", "")).strip()
+            avion = str(item.get("avion", "")).strip().upper()
+            log_num = str(item.get("log_numero", "")).strip().upper()
+            if log_num and not log_num.startswith("LOG") and log_num.isdigit():
+                log_num = f"LOG{log_num.zfill(4)}"
+
+            existing["fecha"] = fecha
+            existing["avion"] = avion
+            existing["log_numero"] = log_num
+            existing["nombre_final"] = formatear_nombre_atl(fecha, avion, log_num)
+
+            if existing.get("estado") != "renombrado":
+                if fecha and avion and log_num:
+                    existing["estado"] = "listo"
+                else:
+                    existing["estado"] = "pendiente"
+
+            state[item["id"]] = existing
+            save_atl_state(state)
+            self.send_json({"status": "ok", "item": existing})
+            return
+
+        elif path == "/api/atl/auto_incrementar_logs":
+            start_id = req_data.get("start_id")
+            raw_start_log = str(req_data.get("start_log", "")).strip().upper()
+            state = load_atl_state()
+
+            m = re.search(r'(\d+)', raw_start_log)
+            if not m:
+                self.send_json({"error": "No se encontró un número válido en el log inicial"}, status=400)
+                return
+            start_num = int(m.group(1))
+
+            sorted_keys = sorted(state.keys())
+            if start_id in sorted_keys:
+                idx_start = sorted_keys.index(start_id)
+            else:
+                idx_start = 0
+
+            actualizados = []
+            for i, key in enumerate(sorted_keys[idx_start:]):
+                curr_num = start_num + i
+                it = state[key]
+                it["log_numero"] = f"LOG{str(curr_num).zfill(4)}"
+                it["nombre_final"] = formatear_nombre_atl(it.get("fecha", ""), it.get("avion", ""), it["log_numero"])
+                if it.get("estado") != "renombrado":
+                    if it.get("fecha") and it.get("avion") and it.get("log_numero"):
+                        it["estado"] = "listo"
+                    else:
+                        it["estado"] = "pendiente"
+                actualizados.append(it)
+
+            save_atl_state(state)
+            self.send_json({"status": "ok", "actualizados": len(actualizados), "items": actualizados})
+            return
+
+        elif path == "/api/atl/aplicar_lote":
+            ids = req_data.get("ids", [])
+            fecha = req_data.get("fecha")
+            avion = req_data.get("avion")
+            state = load_atl_state()
+
+            if not ids:
+                ids = list(state.keys())
+
+            for f_id in ids:
+                if f_id in state:
+                    it = state[f_id]
+                    if fecha is not None:
+                        it["fecha"] = str(fecha).strip()
+                    if avion is not None:
+                        it["avion"] = str(avion).strip().upper()
+                    it["nombre_final"] = formatear_nombre_atl(it.get("fecha", ""), it.get("avion", ""), it.get("log_numero", ""))
+                    if it.get("estado") != "renombrado":
+                        if it.get("fecha") and it.get("avion") and it.get("log_numero"):
+                            it["estado"] = "listo"
+                        else:
+                            it["estado"] = "pendiente"
+
+            save_atl_state(state)
+            self.send_json({"status": "ok", "total": len(ids)})
+            return
+
+        elif path == "/api/atl/renombrar":
+            target_ids = req_data.get("ids", [])
+            state = load_atl_state()
+            renombrados = []
+
+            items_to_rename = []
+            if target_ids:
+                items_to_rename = [state[i] for i in target_ids if i in state]
+            else:
+                items_to_rename = [it for it in state.values() if it.get("fecha") and it.get("avion") and it.get("log_numero")]
+
+            for it in items_to_rename:
+                f_id = it["id"]
+                src_path = os.path.join(ATL_DIVIDIDOS_DIR, f_id)
+                final_name = it.get("nombre_final") or formatear_nombre_atl(it.get("fecha", ""), it.get("avion", ""), it.get("log_numero", ""))
+                dst_path = os.path.join(ATL_RENOMBRADOS_DIR, final_name)
+
+                old_file = it.get("archivo_en_disco")
+                if old_file and old_file != final_name:
+                    old_path = os.path.join(ATL_RENOMBRADOS_DIR, old_file)
+                    if os.path.exists(old_path) and os.path.isfile(old_path):
+                        try:
+                            os.remove(old_path)
+                        except Exception:
+                            pass
+
+                if os.path.exists(src_path):
+                    import shutil
+                    shutil.copy2(src_path, dst_path)
+                    it["estado"] = "renombrado"
+                    it["nombre_final"] = final_name
+                    it["archivo_en_disco"] = final_name
+                    state[f_id] = it
+                    renombrados.append({"id": f_id, "nombre_final": final_name})
+
+            save_atl_state(state)
+            self.send_json({"status": "ok", "renombrados": renombrados})
+            return
+
+        elif path == "/api/atl/limpiar":
+            for f in os.listdir(ATL_DIVIDIDOS_DIR):
+                fp = os.path.join(ATL_DIVIDIDOS_DIR, f)
+                try:
+                    if os.path.isfile(fp):
+                        os.remove(fp)
+                except Exception:
+                    pass
+            for f in os.listdir(ATL_THUMB_DIR):
+                fp = os.path.join(ATL_THUMB_DIR, f)
+                try:
+                    if os.path.isfile(fp):
+                        os.remove(fp)
+                except Exception:
+                    pass
+            save_atl_state({})
+            self.send_json({"status": "ok"})
+            return
+
+        elif path == "/api/secuencia_atl/renumerar":
+            try:
+                import renumerar_atl
+                data = json.loads(body.decode("utf-8"))
+                archivo = data.get("archivo", "")
+                inicio = int(data.get("inicio", 1))
+                prefijo = data.get("prefijo", None)
+                digitos = int(data.get("digitos", 4))
+                folder = os.path.join(BASE_DIR, "Sequencia ATL")
+
+                if archivo == "TODOS":
+                    docs = renumerar_atl.listar_documentos_carpeta(folder)
+                    resultados = []
+                    for d in docs:
+                        res = renumerar_atl.renumerar_documento(
+                            d["ruta_completa"],
+                            start_num=inicio,
+                            prefix=d["prefijo_detectado"],
+                            digits=digitos
+                        )
+                        resultados.append(res)
+                    self.send_json({"status": "ok", "modo": "todos", "resultados": resultados})
+                    return
+                else:
+                    base_fname = os.path.basename(archivo)
+                    file_path = os.path.join(folder, base_fname)
+                    if not os.path.exists(file_path):
+                        self.send_json({"error": f"Archivo no encontrado: {base_fname}"}, status=404)
+                        return
+                    res = renumerar_atl.renumerar_documento(
+                        file_path,
+                        start_num=inicio,
+                        prefix=prefijo,
+                        digits=digitos
+                    )
+                    self.send_json({"status": "ok", "modo": "individual", "resultado": res})
+                    return
+            except Exception as e:
+                self.send_json({"error": f"Error al renumerar: {str(e)}"}, status=500)
+                return
+
+        elif path == "/api/secuencia_atl/abrir_carpeta":
+            try:
+                import subprocess
+                folder = os.path.abspath(os.path.join(BASE_DIR, "Sequencia ATL"))
+                os.makedirs(folder, exist_ok=True)
+                try:
+                    subprocess.Popen(["explorer.exe", folder])
+                except Exception:
+                    os.startfile(folder)
+                self.send_json({"status": "ok", "ruta": folder})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/secuencia_atl/subir":
+            try:
+                raw_filename = self.headers.get("X-Filename", "documento.docx")
+                filename = urllib.parse.unquote(raw_filename)
+                folder = os.path.join(BASE_DIR, "Sequencia ATL")
+                os.makedirs(folder, exist_ok=True)
+                target = os.path.join(folder, os.path.basename(filename))
+                with open(target, "wb") as f:
+                    f.write(body)
+                self.send_json({"status": "ok", "archivo": os.path.basename(filename)})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
         else:
             self.send_error(404)
 

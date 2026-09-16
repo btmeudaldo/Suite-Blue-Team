@@ -1,42 +1,39 @@
-# ✈️ Renombrador Inteligente de Exámenes ATPL / Aviación
+# ✈️ Blue Team Operations Suite
 
-Sistema web inteligente para la división automática, reconocimiento por visión con IA (Google Gemini) y renombrado estandarizado de exámenes de aviación EASA / ATPL.
+Suite web modular de gestión documental para escuelas de aviación (Blue Team Flight School). Permite la división automática, reconocimiento inteligente y renombrado estandarizado tanto de **Exámenes ATPL** como de **Partes de Vuelo (ATLs de Flota y Simuladores FSTD)**.
 
 ---
 
-## 🌟 Características Principales
+## 🌟 Módulos Disponibles
 
-1. **📥 Asistente de Carga y División de Escaneos**:
-   * Carga masiva de PDFs escaneados multipágina mediante arrastrar y soltar (*drag & drop*).
-   * **Extracción ultrarrápida de la cabecera de la 1ª página** con PyMuPDF para lectura visual de la materia y número de examen.
-   * Detección automática de asignaturas EASA y número de examen a partir del nombre del archivo (ej: `AIRLAW260318.pdf` ➔ `ALW (010)`, `260907_FPM_EX9.pdf` ➔ `FPM (033)` + Examen `9`).
-   * Asignación en bloque de materia, código EASA y número de examen para todas las páginas generadas de ese archivo.
-   * Detección de fecha en formato `YYMMDD`.
+### 1. 🏠 Hub Principal de Navegación
+* Selector central para alternar al instante entre utilidades.
+* Indicadores de estado en tiempo real (hojas pendientes, listas y renombradas).
+* Barra superior global unificada con memoria de sesión activa.
 
-2. **📁 Separación por Sesiones Consecutivas**:
-   * Cada lote de escaneos se clasifica automáticamente en subcarpetas consecutivas (`Examenes_Renombrados/1/`, `Examenes_Renombrados/2/`, etc.).
-   * Filtro por sesión en la barra de herramientas para trabajar por tandas.
+### 2. ✈️ Gestor y Renombrador de ATLs (100% Local)
+* **División Automática Hoja por Hoja**: Carga masiva de escaneos multipágina de partes de vuelo (ej: `21-07.13-09.pdf`).
+* **Extracción Local Directa**: Detección automática de matrículas (`ES-3A-099`, `ES-1A-099`, `EC-...`) y números de log (`LOG0320`) mediante expresiones regulares y PyMuPDF.
+* **Visor de Cabecera en HD**: Recorte nítido de la parte superior del parte donde figura la fecha manuscrita y los datos principales, ampliable a pantalla completa.
+* **Entrada Manual Ultrarrápida**:
+  - `Enter` en el campo de fecha guarda el registro y salta automáticamente el foco al campo fecha de la siguiente hoja con desplazamiento suave.
+  - Botón `⬇️ Copiar hacia abajo`: replica la fecha introducida a todas las hojas siguientes de la jornada.
+* **🔢 Auto-incrementar Números de Log**: Asigna números correlativos consecutivos (ej: `0319`, `0320`, `0321`...) a todas las hojas en 1 segundo.
+* **📅 y ✈️ Asignación Masiva**: Herramientas para fijar fecha o aeronave a todo el lote.
+* **Formato Estándar de Salida**: `[FECHA] [SIMULADOR/AVION] [LOGXXXX].pdf` (ej: `260722 ES-3A-099 LOG0320.pdf`) guardados en la carpeta `ATL_Renombrados/`.
 
-3. **✨ Reconocimiento Inteligente con IA (Gemini Vision)**:
-   * Lectura de la cabecera recortada para identificar nombres manuscritos de alumnos.
-   * Autocompletado y coincidencia inteligente con la lista de alumnos activos convocados.
-   * Nombres 100% en **MAYÚSCULAS** y **sin tildes** para compatibilidad con sistemas de ficheros.
-
-4. **🔍 Visor y Ampliación de Cabeceras**:
-   * Previsualización amplia de la cabecera de cada examen.
-   * Visor de zoom a pantalla completa con navegación por teclado (`Escape` para cerrar).
-
-5. **⚡ Procesamiento en Bloque o Individual**:
-   * Analiza con IA de uno en uno o en lotes configurables (5, 10, etc.).
-   * Renombrado instantáneo con la tecla `Enter` y avance automático al siguiente examen.
+### 3. 📋 Gestor y Renombrador de Exámenes ATPL
+* Carga y división de exámenes tipo test multipágina.
+* Visor de cabeceras recortadas para lectura visual de alumnos y examen.
+* Autocompletado inteligente con lista de alumnos convocados y asignación de materias oficiales EASA.
+* Clasificación por subcarpetas de sesiones consecutivas (`Examenes_Renombrados/1/`, etc.).
 
 ---
 
 ## 🛠️ Tecnologías
 
-* **Backend**: Python 3 (servidor HTTP nativo, `pymupdf` / `fitz`, `google-genai`, `pillow`).
+* **Backend**: Python 3 (servidor HTTP nativo, `pymupdf` / `fitz`, `pillow`).
 * **Frontend**: HTML5, Vanilla JavaScript, CSS3 moderno con variables de diseño, glassmorphism y dark mode.
-* **IA**: Google Gemini Vision (`gemini-2.5-flash`).
 
 ---
 

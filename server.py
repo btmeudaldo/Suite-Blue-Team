@@ -951,7 +951,7 @@ class ExamHandler(BaseHTTPRequestHandler):
             base_fname = os.path.basename(archivo)
             file_path = os.path.join(BASE_DIR, "Sequencia ATL", base_fname)
             if not os.path.exists(file_path):
-                self.send_error(404, "Archivo no encontrado")
+                self.send_error(404, f"Archivo no encontrado: {base_fname}")
                 return
             with open(file_path, "rb") as f:
                 content = f.read()
@@ -959,6 +959,8 @@ class ExamHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
             self.send_header("Content-Disposition", f'attachment; filename="{base_fname}"')
             self.send_header("Content-Length", str(len(content)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
             self.end_headers()
             self.wfile.write(content)
             return
@@ -1855,13 +1857,44 @@ class ExamHandler(BaseHTTPRequestHandler):
         elif path == "/api/secuencia_atl/abrir_carpeta":
             try:
                 import subprocess
-                folder = os.path.abspath(os.path.join(BASE_DIR, "Sequencia ATL"))
+                data = {}
+                if body and len(body) > 0:
+                    try:
+                        data = json.loads(body.decode("utf-8"))
+                    except Exception:
+                        pass
+                archivo = data.get("archivo", "")
+                folder = os.path.normpath(os.path.abspath(os.path.join(BASE_DIR, "Sequencia ATL")))
                 os.makedirs(folder, exist_ok=True)
-                try:
-                    subprocess.Popen(["explorer.exe", folder])
-                except Exception:
-                    os.startfile(folder)
-                self.send_json({"status": "ok", "ruta": folder})
+
+                abierto = False
+                target_file = os.path.join(folder, os.path.basename(archivo)) if archivo else None
+
+                # 1. Si se especificó un archivo concreto y existe, abrir seleccionándolo
+                if target_file and os.path.exists(target_file):
+                    try:
+                        subprocess.Popen(f'explorer.exe /select,"{target_file}"', shell=True)
+                        abierto = True
+                    except Exception:
+                        pass
+
+                # 2. Abrir carpeta mediante la API nativa de Windows Shell
+                if not abierto:
+                    try:
+                        os.startfile(folder)
+                        abierto = True
+                    except Exception:
+                        pass
+
+                # 3. Fallback con comando explorer
+                if not abierto:
+                    try:
+                        subprocess.Popen(["explorer.exe", folder])
+                        abierto = True
+                    except Exception:
+                        pass
+
+                self.send_json({"status": "ok", "ruta": folder, "archivo": archivo, "abierto": abierto})
             except Exception as e:
                 self.send_json({"error": str(e)}, status=500)
             return

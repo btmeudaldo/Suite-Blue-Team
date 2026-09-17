@@ -326,7 +326,62 @@ async function renumerarTodosLote() {
   }
 }
 
-async function abrirCarpetaSequencia(btnElem) {
+async function descargarDocumentoSecuencia(archivo, btnElem) {
+  if (!archivo) {
+    const sel = document.getElementById('secuencia-select-file');
+    archivo = sel ? sel.value : '';
+  }
+  if (!archivo) {
+    alert("No se pudo identificar el archivo a descargar.");
+    return;
+  }
+
+  const origHtml = btnElem ? btnElem.innerHTML : '';
+  if (btnElem) {
+    btnElem.innerHTML = '⏳ Descargando...';
+    btnElem.disabled = true;
+  }
+
+  try {
+    const res = await fetch(`/api/secuencia_atl/descargar?archivo=${encodeURIComponent(archivo)}`);
+    if (!res.ok) {
+      throw new Error(`Error en el servidor (${res.status})`);
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = archivo;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    if (btnElem) {
+      btnElem.innerHTML = '✅ ¡Descargado!';
+      setTimeout(() => {
+        btnElem.innerHTML = origHtml;
+        btnElem.disabled = false;
+      }, 2500);
+    }
+  } catch (err) {
+    console.error("Error al descargar archivo:", err);
+    alert("Error al descargar: " + err.message);
+    if (btnElem) {
+      btnElem.innerHTML = origHtml;
+      btnElem.disabled = false;
+    }
+  }
+}
+
+async function abrirCarpetaSequencia(btnElem, archivo = '') {
+  if (!archivo) {
+    const sel = document.getElementById('secuencia-select-file');
+    archivo = sel ? sel.value : '';
+  }
+
   const originalText = btnElem ? btnElem.innerHTML : null;
   if (btnElem) {
     btnElem.innerHTML = '⏳ Abriendo...';
@@ -334,7 +389,11 @@ async function abrirCarpetaSequencia(btnElem) {
   }
 
   try {
-    const res = await fetch('/api/secuencia_atl/abrir_carpeta', { method: 'POST' });
+    const res = await fetch('/api/secuencia_atl/abrir_carpeta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archivo: archivo || '' })
+    });
     const data = await res.json();
     if (data.status === 'ok') {
       if (btnElem) {
@@ -342,7 +401,12 @@ async function abrirCarpetaSequencia(btnElem) {
         setTimeout(() => {
           btnElem.innerHTML = originalText;
           btnElem.disabled = false;
-        }, 2200);
+        }, 2500);
+      }
+      const rutaBox = document.getElementById('sec-ruta-aviso');
+      if (rutaBox) {
+        rutaBox.style.display = 'block';
+        rutaBox.innerHTML = `📂 <strong>Abierta en Explorador:</strong> <code>${data.ruta}</code>`;
       }
     } else {
       throw new Error(data.error || 'No se pudo abrir la carpeta');
@@ -374,22 +438,27 @@ function mostrarResultadoModal({ titulo, archivo, secuencia, paginas, descargaUr
   }
   if (archivo) {
     bodyHtml += `
-      <div class="sec-modal-info">
+      <div class="sec-modal-info" style="margin-bottom:12px;">
         <p><strong>Documento:</strong> ${archivo}</p>
-        <p><strong>Nueva Secuencia:</strong> <span class="badge-seq">${secuencia}</span></p>
-        <p><strong>Páginas modificadas:</strong> ${paginas} páginas</p>
+        ${secuencia ? `<p><strong>Nueva Secuencia:</strong> <span class="badge-seq">${secuencia}</span></p>` : ''}
+        ${paginas ? `<p><strong>Páginas modificadas:</strong> ${paginas} páginas</p>` : ''}
       </div>`;
   }
   if (contenidoExtra) {
     bodyHtml += contenidoExtra;
   }
-  if (descargaUrl) {
-    bodyHtml += `
-      <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
-        <a class="btn btn-primary" href="${descargaUrl}">📥 Descargar Documento Modificado</a>
-        <button class="btn btn-secondary" onclick="abrirCarpetaSequencia(this)">📂 Abrir Carpeta en Windows</button>
-      </div>`;
-  }
+
+  bodyHtml += `
+    <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <button class="btn btn-primary" onclick="descargarDocumentoSecuencia('${archivo || ''}', this)" style="background: #2563eb; color: white; font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer; border: none;">
+        📥 Descargar Documento Modificado
+      </button>
+      <button class="btn btn-secondary" onclick="abrirCarpetaSequencia(this, '${archivo || ''}')" style="font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer;">
+        📂 Abrir Carpeta en Windows
+      </button>
+    </div>
+    <div id="sec-ruta-aviso" style="margin-top:10px; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:0.83rem; color:var(--text-secondary); display:none;"></div>
+  `;
 
   if (bodyElem) bodyElem.innerHTML = bodyHtml;
   modalOverlay.classList.remove('hidden');

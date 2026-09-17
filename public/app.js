@@ -374,6 +374,7 @@ function renderExams() {
             <div>
               <span style="font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; display: block;">Nombre resultante:</span>
               <span class="preview-name" id="preview-${item.id}">${finalName}</span>
+              <small role="status" id="exam-save-${item.id}" style="display: block;">${examAutosave.status(item.id)}</small>
             </div>
             <div class="card-actions-row">
               <button class="btn btn-outline btn-sm btn-analyze" onclick="analyzeSingle('${item.id}', this)" ${item.estado === 'renombrado' ? 'disabled' : ''}>
@@ -456,20 +457,27 @@ function handleFieldChange(e) {
 }
 
 // Guardar edición en backend
-let saveTimeout = null;
-function saveItemEdit(item) {
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(async () => {
-    try {
-      await fetch('/api/guardar_edicion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item })
-      });
-    } catch (e) {
-      console.error('Error guardando edición:', e);
+const examAutosave = createItemAutosave({
+  async save(item) {
+    const response = await fetch('/api/guardar_edicion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.status !== 'ok') {
+      throw new Error(result.error || 'No se pudo guardar el examen.');
     }
-  }, 400);
+    return result;
+  },
+  onStatus(id, status) {
+    const element = document.getElementById(`exam-save-${id}`);
+    if (element) element.textContent = status;
+  },
+});
+
+function saveItemEdit(item) {
+  examAutosave.schedule(item);
 }
 
 // Analizar un examen individual con Gemini
@@ -558,18 +566,20 @@ async function renameSingle(id, btn) {
   }
 
   try {
+    await examAutosave.flush(id);
     const res = await fetch('/api/renombrar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items: [item] })
     });
     const result = await res.json();
-    if (result.status === 'ok') {
+    if (res.ok && result.status === 'ok' && result.renombrados?.some(entry => entry.id === id)) {
       item.estado = 'renombrado';
       updateStats();
       renderExams();
+      if (result.errores?.length) alert(result.errores.map(entry => entry.error).join('\n'));
     } else {
-      alert('No se pudo renombrar el archivo.');
+      alert(result.errores?.map(entry => entry.error).join('\n') || result.error || 'No se pudo renombrar el archivo.');
     }
   } catch (err) {
     alert('Error al renombrar: ' + err.message);
@@ -669,6 +679,7 @@ async function batchRenameAnalyzed() {
   });
 
   try {
+    await Promise.all(ready.map(item => examAutosave.flush(item.id)));
     const res = await fetch('/api/renombrar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -683,7 +694,8 @@ async function batchRenameAnalyzed() {
     renamed.forEach(item => item.estado = 'renombrado');
     updateStats();
     renderExams();
-    alert(`Se han renombrado ${renamed.length} de ${ready.length} exámenes en 'Examenes_Renombrados/'.${renamed.length < ready.length ? '\nLos restantes siguen pendientes. Comprueba que sus archivos originales estén disponibles.' : ''}`);
+    const details = (data.errores || []).map(entry => `${entry.id}: ${entry.error}`).join('\n');
+    alert(`Se han renombrado ${renamed.length} de ${ready.length} exámenes en 'Examenes_Renombrados/'.${details ? '\n' + details : ''}${renamed.length < ready.length ? '\nLos restantes no se han renombrado. Corrige los datos y vuelve a intentarlo.' : ''}`);
   } catch (err) {
     alert('Error al renombrar lote: ' + err.message);
   } finally {

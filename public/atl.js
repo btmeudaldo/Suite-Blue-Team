@@ -231,6 +231,7 @@ function renderAtlCards() {
           </div>
 
           <!-- Fila 4: Acciones -->
+          <small role="status" id="atl-save-${item.id}">${atlAutosave.status(item.id)}</small>
           <div class="atl-actions-row">
             <button class="btn btn-outline btn-sm" onclick="viewAtlPdf('${item.id}')" title="Ver hoja completa en PDF">
               <span>👁️ Ver PDF</span>
@@ -250,7 +251,6 @@ function renderAtlCards() {
 }
 
 // Edición reactiva al escribir en los inputs
-let debounceAtlSaveTimer = null;
 function onAtlInputChange(id, field, value) {
   const item = atlItems.find(it => it.id === id);
   if (!item) return;
@@ -278,27 +278,42 @@ function onAtlInputChange(id, field, value) {
   if (previewEl) previewEl.textContent = previewName;
 
   // Auto-guardado con debounce en servidor
-  clearTimeout(debounceAtlSaveTimer);
-  debounceAtlSaveTimer = setTimeout(() => {
-    saveAtlItemToServer(item);
-  }, 400);
+  atlAutosave.schedule(item);
 }
 
 // Guardar un item en el backend
-async function saveAtlItemToServer(item) {
-  try {
+const atlAutosave = createItemAutosave({
+  async save(item) {
     const res = await fetch('/api/atl/guardar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item })
     });
     const data = await res.json();
-    if (data.status === 'ok' && data.item) {
+    if (!res.ok || data.status !== 'ok') {
+      throw new Error(data.error || 'No se pudo guardar el ATL.');
+    }
+    return data;
+  },
+  onSaved(id, data) {
+    const item = atlItems.find(candidate => candidate.id === id);
+    if (item && data.item) {
       Object.assign(item, data.item);
       updateAtlStats();
     }
+  },
+  onStatus(id, status) {
+    const element = document.getElementById(`atl-save-${id}`);
+    if (element) element.textContent = status;
+  },
+});
+
+async function saveAtlItemToServer(item) {
+  atlAutosave.schedule(item);
+  try {
+    await atlAutosave.flush(item.id);
   } catch (err) {
-    console.error('Error guardando item ATL:', err);
+    alert('Error guardando ATL: ' + err.message);
   }
 }
 
@@ -395,19 +410,23 @@ async function renameSingleAtl(id) {
   }
 
   try {
+    await atlAutosave.flush(id);
     const res = await fetch('/api/atl/renombrar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: [id] })
     });
     const data = await res.json();
-    if (data.status === 'ok') {
+    if (res.ok && data.status === 'ok' && data.renombrados?.some(entry => entry.id === id)) {
       item.estado = 'renombrado';
       renderAtlCards();
       updateAtlStats();
+      if (data.errores?.length) alert(data.errores.map(entry => entry.error).join('\n'));
+    } else {
+      alert(data.errores?.map(entry => entry.error).join('\n') || data.error || 'No se pudo renombrar el ATL.');
     }
   } catch (err) {
-    console.error('Error renombrando ATL:', err);
+    alert('Error renombrando ATL: ' + err.message);
   }
 }
 
@@ -423,18 +442,22 @@ async function renameReadyAtls() {
   if (!confirm(confirmMsg)) return;
 
   try {
+    await Promise.all(readyItems.map(item => atlAutosave.flush(item.id)));
     const res = await fetch('/api/atl/renombrar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: readyItems.map(i => i.id) })
     });
     const data = await res.json();
-    if (data.status === 'ok') {
-      alert(`¡Completado! Se han renombrado ${data.renombrados.length} archivo(s) correctamente.`);
+    if (res.ok && data.status === 'ok' && Array.isArray(data.renombrados)) {
+      const details = (data.errores || []).map(entry => `${entry.id}: ${entry.error}`).join('\n');
+      alert(`Se han renombrado ${data.renombrados.length} de ${readyItems.length} archivo(s).${details ? '\n' + details : ''}`);
       await loadAtlItems();
+    } else {
+      throw new Error(data.error || 'El servidor no confirmó el renombrado.');
     }
   } catch (err) {
-    console.error('Error en renombrado en bloque:', err);
+    alert('Error en renombrado en bloque: ' + err.message);
   }
 }
 

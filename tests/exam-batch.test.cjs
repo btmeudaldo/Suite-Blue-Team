@@ -16,6 +16,7 @@ function setup(items, response = { status: 'ok', renombrados: [{ id: 'a' }] }) {
       return { ok: true, json: async () => response };
     },
   });
+  vm.runInContext(fs.readFileSync('public/shared/item-autosave.js', 'utf8'), context);
   vm.runInContext(source, context);
   context.fixture = items;
   vm.runInContext("examenes = fixture; listaAlumnosMemoria = ['ALUMNO PRUEBA']; updateStats = () => {}; renderExams = () => {};", context);

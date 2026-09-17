@@ -56,3 +56,19 @@ test('failure is visible, blocks flush and a later edit can retry', async () => 
   await queue.flush('A');
   assert.equal(queue.status('A'), 'Guardado');
 });
+
+test('flush also drains edits arriving while the first save is in flight', async () => {
+  const saved = [];
+  let finish;
+  const { queue } = fixture(async item => {
+    saved.push(item.value);
+    if (item.value === 1) await new Promise(resolve => { finish = resolve; });
+  });
+  queue.schedule({ id: 'A', value: 1 });
+  const flushed = queue.flush('A');
+  queue.schedule({ id: 'A', value: 2 });
+  finish();
+  await flushed;
+  assert.deepEqual(saved, [1, 2]);
+  assert.equal(queue.hasUnsaved(), false);
+});

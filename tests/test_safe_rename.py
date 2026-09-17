@@ -82,6 +82,18 @@ class RenameTests(unittest.TestCase):
     def test_missing_source_keeps_previous_file(self):
         self.check_previous("missing")
 
+    def test_destination_directory_failure_is_reported_per_document(self):
+        for atl in (False, True):
+            with self.subTest(atl=atl):
+                self.configure(atl)
+                item = self.item("a.pdf")
+                self.ns[self.save_name]({"a.pdf": item})
+                (self.source / "a.pdf").write_bytes(b"SOURCE")
+                with patch("os.makedirs", side_effect=PermissionError("folder denied")):
+                    result = self.request([item])
+                self.assertEqual(result["renombrados"], [])
+                self.assertIn("folder denied", result["errores"][0]["error"])
+
     def test_copy_failure_keeps_previous_file(self):
         self.check_previous("copy")
 

@@ -118,8 +118,81 @@ def load_state():
     return {}
 
 def save_state(state):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
+    save_json_atomic(STATE_FILE, state)
+
+
+def save_json_atomic(path, state):
+    import tempfile
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(path), delete=False) as stream:
+            temporary = stream.name
+            json.dump(state, stream, indent=2, ensure_ascii=False)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.remove(temporary)
+
+
+def renamed_document_path(root, item):
+    filename = item.get("archivo_en_disco")
+    if not filename and item.get("estado") == "renombrado":
+        filename = item.get("nombre_final")
+        if filename and item.get("sesion"):
+            filename = os.path.join(str(item["sesion"]), filename)
+    return os.path.normcase(os.path.abspath(os.path.join(root, filename))) if filename else None
+
+
+def rename_document_safely(state, item, source, destination, root, relative_name, save):
+    import filecmp
+    import shutil
+    import tempfile
+    identity = item["id"]
+    destination = os.path.normcase(os.path.abspath(destination))
+    previous = renamed_document_path(root, state.get(identity, {}))
+    for other_id, other in state.items():
+        if other_id != identity and renamed_document_path(root, other) == destination:
+            raise FileExistsError("El nombre de destino pertenece a otro documento")
+    if os.path.exists(destination) and previous != destination:
+        raise FileExistsError("Ya existe un archivo con ese nombre; cambia el nombre antes de renombrar")
+    if not os.path.isfile(source):
+        raise FileNotFoundError("No se encuentra el PDF original; se conserva la copia anterior")
+
+    os.makedirs(os.path.dirname(destination), exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(destination), prefix=".rename-") as staging:
+        prepared = os.path.join(staging, "prepared.pdf")
+        backup = os.path.join(staging, "previous.pdf")
+        shutil.copy2(source, prepared)
+        if not filecmp.cmp(source, prepared, shallow=False):
+            raise OSError("La copia del PDF no coincide con el original")
+        existed = os.path.exists(destination)
+        if existed:
+            shutil.copy2(destination, backup)
+        os.replace(prepared, destination)
+        updated = dict(item, estado="renombrado", archivo_en_disco=relative_name)
+        proposed = dict(state)
+        proposed[identity] = updated
+        try:
+            save(proposed)
+        except (OSError, TypeError, ValueError):
+            if existed:
+                os.replace(backup, destination)
+            else:
+                os.remove(destination)
+            raise
+        state[identity] = updated
+
+    # El estado persistido debe apuntar a la nueva copia antes de retirar la anterior.
+    if previous and previous != destination and os.path.isfile(previous):
+        shared = any(other_id != identity and renamed_document_path(root, other) == previous for other_id, other in state.items())
+        if not shared:
+            try:
+                os.remove(previous)
+            except OSError as error:
+                return f"Renombrado; no se pudo retirar la copia anterior: {error}"
+    return None
 
 def get_next_session():
     """Calcula el número de la siguiente sesión consecutiva buscando subcarpetas numéricas en Examenes_Renombrados y estado_examenes."""
@@ -199,8 +272,7 @@ def load_atl_state():
     return {}
 
 def save_atl_state(state):
-    with open(ATL_STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
+    save_json_atomic(ATL_STATE_FILE, state)
 
 def formatear_nombre_atl(fecha, avion, log_numero):
     """
@@ -871,6 +943,7 @@ class ExamHandler(BaseHTTPRequestHandler):
             items = req_data.get("items", [])
             state = load_state()
             renombrados = []
+            errores = []
             
             for it in items:
                 f_id = it.get("id")
@@ -887,48 +960,19 @@ class ExamHandler(BaseHTTPRequestHandler):
                     sesion = "1"
                 
                 sesion_dir = os.path.join(RENOMBRADOS_DIR, sesion)
-                os.makedirs(sesion_dir, exist_ok=True)
                     
                 src_path = os.path.join(DIVIDIDOS_DIR, f_id)
                 dst_path = os.path.join(sesion_dir, final_name)
                 
-                # Buscar cualquier archivo anterior que pertenecía a este examen
-                old_file = old_info.get("archivo_en_disco") or old_info.get("nombre_final")
-                
-                # Si había un archivo anterior con nombre diferente, eliminarlo para no dejar duplicados
-                if old_file:
-                    old_basename = os.path.basename(old_file.replace("\\", "/"))
-                    if old_basename != final_name:
-                        # 1. Probar en sesion_dir
-                        old_in_sesion = os.path.join(sesion_dir, old_basename)
-                        if os.path.exists(old_in_sesion):
-                            try:
-                                os.remove(old_in_sesion)
-                                print(f"[REEMPLAZO] Eliminado archivo anterior obsoleto: {old_in_sesion}")
-                            except Exception as e:
-                                print(f"Error eliminando {old_in_sesion}: {e}")
-                        # 2. Probar en ruta exacta guardada en archivo_en_disco
-                        old_direct = os.path.join(RENOMBRADOS_DIR, old_file)
-                        if os.path.exists(old_direct) and os.path.isfile(old_direct):
-                            try:
-                                os.remove(old_direct)
-                                print(f"[REEMPLAZO] Eliminado archivo anterior: {old_direct}")
-                            except Exception as e:
-                                pass
-
-                if os.path.exists(src_path):
-                    import shutil
-                    shutil.copy2(src_path, dst_path)
-                    it["estado"] = "renombrado"
-                    it["sesion"] = sesion
-                    it["archivo_en_disco"] = f"{sesion}/{final_name}"
-                    it["nombre_final"] = final_name
-                    state[f_id] = it
+                try:
+                    warning = rename_document_safely(state, dict(it, sesion=sesion), src_path, dst_path, RENOMBRADOS_DIR, f"{sesion}/{final_name}", save_state)
                     renombrados.append({"id": f_id, "nombre_final": final_name, "sesion": sesion})
-                    print(f"[RENOMBRADO] Guardado en sesión {sesion}: {final_name}")
-                    
-            save_state(state)
-            self.send_json({"status": "ok", "renombrados": renombrados})
+                    if warning:
+                        errores.append({"id": f_id, "error": warning})
+                except (OSError, TypeError, ValueError) as error:
+                    errores.append({"id": f_id, "error": str(error)})
+
+            self.send_json({"status": "ok", "renombrados": renombrados, "errores": errores})
 
         # ========================================================
         # ENDPOINTS POST PARA ATLS (AIRCRAFT / FSTD TECHNICAL LOGS)
@@ -1113,6 +1157,7 @@ class ExamHandler(BaseHTTPRequestHandler):
             target_ids = req_data.get("ids", [])
             state = load_atl_state()
             renombrados = []
+            errores = []
 
             items_to_rename = []
             if target_ids:
@@ -1126,26 +1171,15 @@ class ExamHandler(BaseHTTPRequestHandler):
                 final_name = it.get("nombre_final") or formatear_nombre_atl(it.get("fecha", ""), it.get("avion", ""), it.get("log_numero", ""))
                 dst_path = os.path.join(ATL_RENOMBRADOS_DIR, final_name)
 
-                old_file = it.get("archivo_en_disco")
-                if old_file and old_file != final_name:
-                    old_path = os.path.join(ATL_RENOMBRADOS_DIR, old_file)
-                    if os.path.exists(old_path) and os.path.isfile(old_path):
-                        try:
-                            os.remove(old_path)
-                        except Exception:
-                            pass
-
-                if os.path.exists(src_path):
-                    import shutil
-                    shutil.copy2(src_path, dst_path)
-                    it["estado"] = "renombrado"
-                    it["nombre_final"] = final_name
-                    it["archivo_en_disco"] = final_name
-                    state[f_id] = it
+                try:
+                    warning = rename_document_safely(state, dict(it, nombre_final=final_name), src_path, dst_path, ATL_RENOMBRADOS_DIR, final_name, save_atl_state)
                     renombrados.append({"id": f_id, "nombre_final": final_name})
+                    if warning:
+                        errores.append({"id": f_id, "error": warning})
+                except (OSError, TypeError, ValueError) as error:
+                    errores.append({"id": f_id, "error": str(error)})
 
-            save_atl_state(state)
-            self.send_json({"status": "ok", "renombrados": renombrados})
+            self.send_json({"status": "ok", "renombrados": renombrados, "errores": errores})
             return
 
         elif path == "/api/atl/limpiar":

@@ -3,10 +3,22 @@
 ## Mejora actual: guardado seguro
 
 - [x] Leer código y definir alcance de los tres problemas autorizados.
-- [ ] RED: autoguardado por tarjeta, colisiones y copia fallida.
-- [ ] GREEN: cola de guardado y operaciones seguras en Exámenes y ATL.
-- [ ] Integrar mensajes de error y verificar preview con datos ficticios.
+- [x] RED: autoguardado por tarjeta, colisiones y copia fallida.
+- [x] GREEN: cola de guardado y operaciones seguras en Exámenes y ATL.
+- [x] Integrar mensajes de error y verificar preview con datos ficticios.
 - [ ] Commit aislado, push y registro de resultados.
+
+### Revisión de guardado seguro (17/09/2026)
+
+- 15 pruebas Node y 10 pruebas Python correctas; Python cubre ambos módulos mediante subcasos. Se ejecutaron también sobre la copia aislada preparada para commit.
+- RED reproducido antes de implementar: pérdida de la primera tarjeta, conflictos de destino, copia fallida, guardados pendientes y edición durante una petición lenta.
+- Cola por tarjeta con snapshots, peticiones ordenadas, estados visibles y espera del guardado antes de renombrar. Los errores del servidor se muestran en pantalla.
+- Copia temporal verificada, detección de destinos ocupados y persistencia atómica del estado antes de retirar la copia antigua. Rollback si falla la persistencia.
+- Preview local: cuatro tarjetas ficticias guardadas correctamente (dos Exámenes y dos ATL), capturas `output/playwright/preview_screenshot-safe-exams.png` y `preview_screenshot-safe-atl.png`.
+- Tres recursos JavaScript versionados con `20260917-safe-save`, descargados correctamente por la preview. IA inactiva; no se tocaron PDFs reales.
+- Comprobaciones de sintaxis JavaScript y compilación Python correctas. `npm run lint:fix` y `npm run format` no disponibles porque falta `package.json`.
+- Límite: no hay una transacción conjunta PDF/JSON frente a apagado abrupto, aunque la fuente se conserva y la copia anterior se retira después de persistir.
+- Pendiente fuera de estos tres arreglos: coordinar borrado de tarjetas con autoguardados en curso; revisar por separado antes de ampliar operaciones de eliminación.
 
 - [x] Diagnosticar causas y documentar requisitos y plan.
 - [x] Ejecutar regresiones RED de selección, respuesta parcial y responsive.

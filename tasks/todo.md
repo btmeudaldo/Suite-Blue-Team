@@ -1,5 +1,13 @@
 # Cabeceras y Renombrar Listos
 
+## Puntos 4 y 5: confirmación y recuperación
+
+- [x] Revisar renombrado individual y definir recuperación de JSON.
+- [ ] Verificar punto 4 y reproducir RED de corrupción/avisos.
+- [ ] Implementar respaldo, recuperación y errores explícitos.
+- [ ] Verificar pruebas, preview y recursos versionados.
+- [ ] Commit aislado y push.
+
 ## Mejora actual: guardado seguro
 
 - [x] Leer código y definir alcance de los tres problemas autorizados.

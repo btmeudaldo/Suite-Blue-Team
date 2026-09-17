@@ -1,5 +1,12 @@
 import os
 import sys
+
+# Si se ejecuta mediante pythonw o sin consola, redirigir streams para evitar caídas en BaseHTTPRequestHandler
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
 import json
 import urllib.parse
 import base64
@@ -68,7 +75,16 @@ EASA_MAP = {
     "OPS": ("OPS", "070"),
     "POF": ("POF", "081"),
     "COMM": ("COMM", "090"),
-    "PPL": ("PPL", "100")
+    "PPL": ("PPL", "100"),
+    "DA42": ("DA42", ""),
+    "MEP": ("DA42", ""),
+    "MULTI ENGINE": ("DA42", ""),
+    "MULTIMOTOR": ("DA42", ""),
+    "DA40": ("DA40", ""),
+    "CESSNA": ("CESSNA", ""),
+    "C172": ("CESSNA", ""),
+    "C152": ("CESSNA", ""),
+    "C150": ("CESSNA", "")
 }
 
 MATERIAS_RULES = [
@@ -85,7 +101,11 @@ MATERIAS_RULES = [
     (r'OPS|OPERATIONAL\s*PROCEDURES|PROCEDIMIENTOS', 'OPS', '070'),
     (r'POF|PRINCIPLES\s*OF\s*FLIGHT|PRINCIPIOS\s*DE\s*VUELO', 'POF', '081'),
     (r'COMM(?:UNICATIONS|UNICACIONES)?|COMUNICACI[OÓ]N', 'COMM', '090'),
-    (r'PPL', 'PPL', '100')
+    (r'PPL', 'PPL', '100'),
+    (r'DA42|DIAMOND\s*42', 'DA42', ''),
+    (r'MEP|MULTI\s*ENGINE|MULTIMOTOR', 'DA42', ''),
+    (r'DA40|DIAMOND\s*40', 'DA40', ''),
+    (r'CESSNA|C[-_ ]?172|C[-_ ]?152|C[-_ ]?150', 'CESSNA', '')
 ]
 
 import re
@@ -106,6 +126,19 @@ def extraer_materia_y_examen(filename):
         num_ex = m_ex.group(1)
         
     return asig, cod, num_ex
+
+
+def agregar_ok_nombre_archivo(filename):
+    """
+    Agrega ' OK' al final del nombre base del archivo antes de la extensión.
+    Ej: '260622 mep ex1.pdf' -> '260622 mep ex1 OK.pdf'
+    Si ya termina en ' OK' o '_OK', no lo duplica.
+    """
+    name, ext = os.path.splitext(filename)
+    name_clean = name.rstrip()
+    if name_clean.upper().endswith(" OK") or name_clean.upper().endswith("_OK"):
+        return f"{name_clean}{ext}"
+    return f"{name_clean} OK{ext}"
 
 
 def load_state():
@@ -291,11 +324,11 @@ def get_next_session():
             nums.append(int(ses))
     return str(max(nums) + 1) if nums else "1"
 
-def get_or_create_thumbnail(pdf_filename):
-    """Genera la imagen de la cabecera recortada y saneada (sin nota ni firmas)."""
+def get_or_create_thumbnail(pdf_filename, force=False):
+    """Genera la imagen de la cabecera recortada respetando la rotación de la página para examen estándar o MEP."""
     thumb_name = pdf_filename.replace(".pdf", ".png")
     thumb_path = os.path.join(THUMB_DIR, thumb_name)
-    if os.path.exists(thumb_path):
+    if not force and os.path.exists(thumb_path):
         return thumb_path
         
     pdf_path = os.path.join(DIVIDIDOS_DIR, pdf_filename)
@@ -305,13 +338,14 @@ def get_or_create_thumbnail(pdf_filename):
     try:
         doc = pymupdf.open(pdf_path)
         page = doc[0]
-        rect = page.rect
-        # Tomar unicamente la cabecera exacta cortando antes de las preguntas del test
-        header_rect = pymupdf.Rect(0, 0, rect.width, rect.height * 0.185)
-        pix = page.get_pixmap(clip=header_rect, dpi=200)
-        
-        # Guardar directamente la cabecera completa y nítida
-        pix.save(thumb_path)
+        # Renderizar a 150 DPI aplicando la rotación nativa (page.rotation)
+        pix = page.get_pixmap(dpi=150)
+        import io
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        w, h = img.size
+        # Tomar la cabecera visual superior (22% de la altura visual)
+        header_crop = img.crop((0, 0, w, int(h * 0.22)))
+        header_crop.save(thumb_path)
         doc.close()
         return thumb_path
     except Exception as e:
@@ -455,6 +489,63 @@ def load_asignaturas():
 
 ASIGNATURAS_OFICIALES = load_asignaturas()
 
+CURSOS_FILE = os.path.join(BASE_DIR, "cursos_disponibles.json")
+def load_cursos():
+    if os.path.exists(CURSOS_FILE):
+        try:
+            with open(CURSOS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return [
+        {"sigla": "ATPL", "nombre": "ATPL - Transporte de Línea Aérea"},
+        {"sigla": "CESSNA", "nombre": "CESSNA - Monomotor Cessna"},
+        {"sigla": "MEP", "nombre": "MEP - Multi-Engine Piston"},
+        {"sigla": "DA40", "nombre": "DA40 - Diamond DA40"},
+        {"sigla": "FI", "nombre": "FI - Flight Instructor"}
+    ]
+
+CURSOS_DISPONIBLES = load_cursos()
+
+def detectar_curso(texto_completo, asig=""):
+    """Detecta automáticamente el curso (ATPL, CESSNA, MEP, DA40, FI) analizando
+    texto de cabecera/pie de página, nombre de archivo o materia."""
+    txt = (texto_completo or "").upper()
+    asig_u = (asig or "").upper()
+    atpl_subjects = {"AGK", "MET", "FPM", "GNAV", "RNAV", "ALW", "INS", "M&B", "PERF", "HPL", "OPS", "POF", "COMM", "PPL"}
+
+    # 1. FI (Curso de Instructor de Vuelo)
+    if re.search(r'CURSO\s*(?:DE\s*)?FI\b|CURSO\s*(?:DE\s*)?INSTRUCTOR|FI\s*\(A\)|FLIGHT\s*INSTRUCTOR\s*COURSE|\bEA10\b', txt):
+        return "FI"
+    if asig_u in ("FI", "EA10"):
+        return "FI"
+
+    # 2. CESSNA
+    if re.search(r'CESSNA|C172|C152|C150|C[-_ ]172|C[-_ ]152', txt):
+        return "CESSNA"
+    if asig_u == "CESSNA":
+        return "CESSNA"
+
+    # 3. MEP (Multi-Engine Piston)
+    if re.search(r'\bMEP\b|MULTI[- ]?ENGINE|MULTIMOTOR|DA42|TWIN', txt):
+        return "MEP"
+    if asig_u in ("MEP", "DA42"):
+        return "MEP"
+
+    # 4. DA40
+    if re.search(r'DA40|DIAMOND\s*40|DA[- ]40', txt):
+        return "DA40"
+    if asig_u == "DA40":
+        return "DA40"
+
+    # 5. ATPL
+    if asig_u in atpl_subjects:
+        return "ATPL"
+    if "ATPL" in txt:
+        return "ATPL"
+
+    return "ATPL"
+
 def quitar_tildes(texto):
     if not texto:
         return ""
@@ -463,6 +554,65 @@ def quitar_tildes(texto):
         "AAAAEEEEIIIIOOOOUUUUAAAAEEEEIIIIOOOOUUUU"
     )
     return texto.translate(trans)
+
+def formatear_nombre_examen(fecha, alumno, tipo, arg1, arg2=None, arg3=None, arg4=None):
+    """Genera el nombre estándar oficial del archivo de examen.
+    Formato: {FECHA}.{ALUMNO}.Examen interno.{CURSO}.{ASIGNATURA}.{CODIGO}.{NUM_EX}.pdf
+    - Se conserva 'Examen interno'
+    - Se coloca el curso entre 'Examen interno' y la asignatura
+    - Si el curso y la asignatura coinciden (ej. MEP, CESSNA, DA40, FI), no se duplica la sigla
+    - Si no hay código EASA o es '000', se omite
+    Soporta llamadas de 6 o 7 argumentos para máxima compatibilidad.
+    """
+    if arg4 is not None:
+        curso = (arg1 or "ATPL").strip().upper()
+        asig = (arg2 or "ASIG").strip().upper()
+        cod = (arg3 or "").strip()
+        num_ex = arg4
+    else:
+        # 6 argumentos (fecha, alumno, tipo, asig, cod, num_ex)
+        asig = (arg1 or "ASIG").strip().upper()
+        cod = (arg2 or "").strip()
+        num_ex = arg3
+        curso = "MEP" if asig in ("MEP", "DA42") else ("CESSNA" if asig == "CESSNA" else "ATPL")
+
+    f_str = fecha or "260907"
+    a_str = quitar_tildes((alumno or "PENDIENTE").strip().upper())
+    t_str = tipo or "Examen interno"
+    raw_num = str(num_ex if num_ex is not None else "").strip().lstrip("0")
+    if raw_num.upper().startswith("EX"):
+        raw_num = raw_num[2:].strip().lstrip("0")
+    n_str = f"EX{raw_num}" if raw_num else "EX_PENDIENTE"
+
+    # Si curso y asignatura son iguales (ej: MEP y MEP, CESSNA y CESSNA, FI y FI)
+    if curso == asig:
+        if cod and cod != "000":
+            return quitar_tildes(f"{f_str}.{a_str}.{t_str}.{curso}.{cod}.{n_str}.pdf")
+        else:
+            return quitar_tildes(f"{f_str}.{a_str}.{t_str}.{curso}.{n_str}.pdf")
+    else:
+        # Curso diferente de asignatura (ej: ATPL y AGK, o MEP y DA42)
+        if cod and cod != "000" and asig not in ("MEP", "CESSNA", "DA40", "DA42", "FI"):
+            return quitar_tildes(f"{f_str}.{a_str}.{t_str}.{curso}.{asig}.{cod}.{n_str}.pdf")
+        else:
+            return quitar_tildes(f"{f_str}.{a_str}.{t_str}.{curso}.{asig}.{n_str}.pdf")
+
+def is_page_blank(page):
+    """Detecta si una página de escaneo está en blanco (reverso en escaneos dúplex o páginas vacías)."""
+    text = page.get_text().strip()
+    if len(text) > 10:
+        return False
+    try:
+        import numpy as np
+        import io
+        pix = page.get_pixmap(dpi=36)
+        img = Image.open(io.BytesIO(pix.tobytes("png"))).convert("L")
+        arr = np.array(img)
+        dark_ratio = float(np.mean(arr < 200))
+        mean_val = float(np.mean(arr))
+        return dark_ratio < 0.003 and mean_val > 248.0
+    except Exception:
+        return False
 
 ALUMNOS_FILE = os.path.join(BASE_DIR, "alumnos_activos.json")
 def load_alumnos():
@@ -540,6 +690,8 @@ Extrae los siguientes campos en formato JSON estricto:
   * POF (Principles of Flight, Principios de Vuelo, 081)
   * COMM (Communications, Comunicaciones, 090)
   * PPL (Private Pilot, PPL General, 100)
+  * MEP (Multi-Engine Piston, Multimotor, MEP01)
+  * CESSNA (Cessna Single Engine, C172, C152, CESSNA01)
 - numero_examen: El numero escrito en 'Num. examen' (ej: 07, 02, 10).
 
 Responde UNICAMENTE con un objeto JSON valido con esas 3 claves.
@@ -565,7 +717,7 @@ Responde UNICAMENTE con un objeto JSON valido con esas 3 claves.
         elif asig_raw in EASA_MAP:
             sigla, cod = EASA_MAP[asig_raw]
         else:
-            sigla, cod = (first_word or "ASIG", "000")
+            sigla, cod = (first_word or "ASIG", "")
             
         num_ex = str(data.get("numero_examen", "")).strip().lstrip("0")
         if not num_ex:
@@ -582,6 +734,13 @@ Responde UNICAMENTE con un objeto JSON valido con esas 3 claves.
         return None
 
 class ExamHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        try:
+            if sys.stderr and hasattr(sys.stderr, "write"):
+                sys.stderr.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), format % args))
+        except Exception:
+            pass
+
     def send_json(self, data, status=200):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
@@ -614,7 +773,17 @@ class ExamHandler(BaseHTTPRequestHandler):
         elif path.startswith("/public/"):
             rel_path = path[len("/public/"):]
             file_path = os.path.join(PUBLIC_DIR, rel_path)
-            content_type = "text/css" if rel_path.endswith(".css") else "application/javascript"
+            content_type = "text/plain"
+            if rel_path.endswith(".css"):
+                content_type = "text/css"
+            elif rel_path.endswith(".js"):
+                content_type = "application/javascript"
+            elif rel_path.endswith(".ico"):
+                content_type = "image/x-icon"
+            elif rel_path.endswith(".png"):
+                content_type = "image/png"
+            elif rel_path.endswith(".svg"):
+                content_type = "image/svg+xml"
             self.serve_file(file_path, content_type)
         elif path == "/api/proxima_sesion":
             self.send_json({"proxima_sesion": get_next_session()})
@@ -622,6 +791,8 @@ class ExamHandler(BaseHTTPRequestHandler):
             self.send_json(ALUMNOS_ACTIVOS)
         elif path == "/api/asignaturas":
             self.send_json(ASIGNATURAS_OFICIALES)
+        elif path == "/api/cursos":
+            self.send_json(CURSOS_DISPONIBLES)
         elif path == "/api/examenes":
             state = load_state()
             files = sorted([f for f in os.listdir(DIVIDIDOS_DIR) if f.endswith(".pdf")])
@@ -634,6 +805,7 @@ class ExamHandler(BaseHTTPRequestHandler):
                     "fecha": fecha_fija,
                     "alumno": "",
                     "tipo": "Examen interno",
+                    "curso": "ATPL",
                     "asignatura": "",
                     "codigo_easa": "",
                     "numero_examen": "",
@@ -641,6 +813,9 @@ class ExamHandler(BaseHTTPRequestHandler):
                     "nombre_final": "",
                     "sesion": "1"
                 })
+                if "curso" not in info or not info["curso"]:
+                    asig = info.get("asignatura", "")
+                    info["curso"] = "MEP" if asig == "MEP" else ("CESSNA" if asig == "CESSNA" else "ATPL")
                 if "sesion" not in info or not info["sesion"]:
                     info["sesion"] = "1"
                 # Generar thumbnail en background si no existe
@@ -738,6 +913,35 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return
 
+        elif path.startswith("/api/secuencia_atl/verificar_todos"):
+            try:
+                import verificar_atl
+                folder = os.path.join(BASE_DIR, "Sequencia ATL")
+                res = verificar_atl.verificar_todos_los_atl(folder)
+                self.send_json(res)
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
+        elif path.startswith("/api/secuencia_atl/verificar"):
+            try:
+                import verificar_atl
+                query = urllib.parse.parse_qs(parsed.query)
+                archivo = query.get("archivo", [""])[0]
+                if not archivo:
+                    self.send_error(400, "Falta el parámetro archivo")
+                    return
+                base_fname = os.path.basename(archivo)
+                file_path = os.path.join(BASE_DIR, "Sequencia ATL", base_fname)
+                if not os.path.exists(file_path):
+                    self.send_json({"status": "error", "error": f"Archivo no encontrado: {base_fname}"}, status=404)
+                    return
+                res = verificar_atl.verificar_atl_documento(file_path)
+                self.send_json(res)
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
         elif path.startswith("/api/secuencia_atl/descargar"):
             query = urllib.parse.parse_qs(parsed.query)
             archivo = query.get("archivo", [""])[0]
@@ -768,39 +972,145 @@ class ExamHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length > 0 else b"{}"
 
-        # 0. Previsualización ultrarrápida de la cabecera de la 1ª página del PDF recibido
+        # 0. Previsualización ultrarrápida de la cabecera de la 1ª página del PDF recibido y detección de páginas
         if path == "/api/extraer_cabecera_preview":
             if len(body) == 0:
                 self.send_json({"error": "No se recibieron datos del PDF"}, status=400)
                 return
             try:
                 doc = pymupdf.open(stream=body, filetype="pdf")
-                if len(doc) == 0:
+                total_pages = len(doc)
+                if total_pages == 0:
                     self.send_json({"error": "El PDF no contiene páginas"}, status=400)
                     return
+
+                raw_filename = self.headers.get("X-Filename", "")
+                filename = urllib.parse.unquote(raw_filename) if raw_filename else ""
+
                 page = doc[0]
-                rect = page.rect
-                # Cortar la cabecera donde aparece Asignatura, Alumno y Núm Examen
-                clip = pymupdf.Rect(0, 0, rect.width, rect.height * 0.22)
-                pix = page.get_pixmap(clip=clip, dpi=160)
-                img_bytes = pix.tobytes("png")
+                pix = page.get_pixmap(dpi=150)
+                import io
+                img = Image.open(io.BytesIO(pix.tobytes("png")))
+                w, h = img.size
+                header_crop = img.crop((0, 0, w, int(h * 0.22)))
+                buf = io.BytesIO()
+                header_crop.save(buf, format="PNG")
+                img_b64 = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+                # Detección automática del número de páginas por examen
+                paginas_por_examen = 1
+                deteccion_metodo = "defecto"
+
+                # 1. Chequear si el nombre del archivo contiene MEP, CESSNA u otra materia
+                asig_detectada, cod_detectado, num_ex_detectado = extraer_materia_y_examen(filename)
+                if asig_detectada in ("MEP", "DA42"):
+                    asig_detectada = "DA42"
+                    paginas_por_examen = 6
+                    deteccion_metodo = "materia_mep"
+                elif asig_detectada == "CESSNA":
+                    paginas_por_examen = 9
+                    deteccion_metodo = "materia_cessna"
+
+                # 2. Análisis rápido con OCR local en franjas superior e inferior buscando 'Pag. 1 de N' o '1 de N'
+                all_txt = ""
+                try:
+                    import numpy as np
+                    from rapidocr_onnxruntime import RapidOCR
+                    ocr = RapidOCR()
+                    top_c = img.crop((0, 0, w, int(h * 0.25)))
+                    bot_c = img.crop((0, int(h * 0.75), w, h))
+                    
+                    r_top, _ = ocr(np.array(top_c))
+                    r_bot, _ = ocr(np.array(bot_c))
+                    all_txt = ' '.join([r[1] for r in (r_top or [])] + [r[1] for r in (r_bot or [])])
+                    
+                    m_p = re.search(r'(?:pag\.?|p[aá]g\.?|p[aá]gina)\s*1\s*de\s*(\d+)', all_txt, re.IGNORECASE)
+                    if not m_p:
+                        m_p = re.search(r'\b1\s*de\s*(\d+)\b', all_txt, re.IGNORECASE)
+                    
+                    if m_p:
+                        found_pages = int(m_p.group(1))
+                        if 1 <= found_pages <= 50:
+                            paginas_por_examen = found_pages
+                            deteccion_metodo = "ocr_cabecera"
+                except Exception:
+                    pass
+
+                # Detectar curso automáticamente mediante texto acumulado y nombre de archivo
+                curso_detectado = detectar_curso(f"{filename} {all_txt}", asig_detectada)
+                if curso_detectado == "MEP":
+                    if paginas_por_examen == 1:
+                        paginas_por_examen = 6
+                        deteccion_metodo = "materia_mep"
+                    if not asig_detectada or asig_detectada == "MEP":
+                        asig_detectada = "DA42"
+                elif curso_detectado == "CESSNA" and paginas_por_examen == 1:
+                    paginas_por_examen = 9
+                    deteccion_metodo = "materia_cessna"
+                elif curso_detectado == "FI" and paginas_por_examen == 1:
+                    paginas_por_examen = 7
+                    deteccion_metodo = "curso_fi"
+
+                # Detectar páginas en blanco del escaneo (ej. reverso en blanco de hojas impares)
+                blank_indices = [i for i, p in enumerate(doc) if is_page_blank(p)]
+                num_blanks = len(blank_indices)
+                paginas_utiles = total_pages - num_blanks
+
+                # Detección inteligente por periodicidad de páginas en blanco en escaneos dúplex
+                if num_blanks >= 2:
+                    diffs = [blank_indices[k] - blank_indices[k-1] for k in range(1, len(blank_indices))]
+                    if len(set(diffs)) == 1:
+                        stride = diffs[0]
+                        if blank_indices[0] == stride - 1 and total_pages % stride == 0:
+                            # Cada examen tiene stride páginas físicas, de las cuales (stride - 1) son útiles
+                            paginas_por_examen = stride - 1
+                            deteccion_metodo = f"periodicidad_blancas_{stride}"
+                elif num_blanks == 1 and blank_indices[0] == total_pages - 1:
+                    if paginas_utiles in (6, 7, 8, 9):
+                        paginas_por_examen = paginas_utiles
+                        deteccion_metodo = "blanca_final"
+
+                if paginas_utiles > 0 and num_blanks > 0:
+                    total_examenes_estimados = (paginas_utiles + paginas_por_examen - 1) // paginas_por_examen
+                else:
+                    total_examenes_estimados = (total_pages + paginas_por_examen - 1) // paginas_por_examen
                 doc.close()
-                img_b64 = "data:image/png;base64," + base64.b64encode(img_bytes).decode("ascii")
-                self.send_json({"ok": True, "thumb": img_b64})
+
+                self.send_json({
+                    "ok": True,
+                    "thumb": img_b64,
+                    "total_paginas": total_pages,
+                    "paginas_en_blanco": num_blanks,
+                    "paginas_utiles": paginas_utiles,
+                    "paginas_por_examen": paginas_por_examen,
+                    "total_examenes_estimados": total_examenes_estimados,
+                    "deteccion_metodo": deteccion_metodo,
+                    "curso": curso_detectado,
+                    "asignatura": asig_detectada,
+                    "codigo_easa": cod_detectado,
+                    "numero_examen": num_ex_detectado
+                })
                 return
             except Exception as e:
                 self.send_json({"error": f"Error al generar previsualización: {str(e)}"}, status=500)
                 return
 
-        # 1. Subida directa de PDF escaneado con división automática
+        # 1. Subida directa de PDF escaneado con división automática por bloques de páginas
         if path == "/api/upload_scan":
             raw_filename = self.headers.get("X-Filename", "escaneo.pdf")
             filename = urllib.parse.unquote(raw_filename)
             fecha = self.headers.get("X-Fecha", "").strip()
             sesion = self.headers.get("X-Sesion", "").strip()
+            curso_previo = urllib.parse.unquote(self.headers.get("X-Curso", "")).strip().upper()
             asig_previa = urllib.parse.unquote(self.headers.get("X-Asignatura", "")).strip().upper()
             cod_previo = urllib.parse.unquote(self.headers.get("X-Codigo-Easa", "")).strip()
             num_previo = urllib.parse.unquote(self.headers.get("X-Numero-Examen", "")).strip().lstrip("0")
+
+            raw_pages = self.headers.get("X-Paginas-Por-Examen", "1").strip()
+            try:
+                paginas_por_examen = max(1, int(raw_pages))
+            except Exception:
+                paginas_por_examen = 1
 
             if not sesion or not sesion.isdigit():
                 sesion = get_next_session()
@@ -817,11 +1127,7 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": "El archivo PDF recibido está vacío"}, status=400)
                 return
 
-            # Guardar copia del escaneo maestro en Escaneos_Originales
             safe_basename = os.path.basename(filename)
-            dest_orig = os.path.join(ORIGINALES_DIR, safe_basename)
-            with open(dest_orig, "wb") as f:
-                f.write(body)
 
             # Extraer automáticamente materia y número de examen del nombre del archivo si no vinieron fijados
             if not asig_previa:
@@ -832,7 +1138,11 @@ class ExamHandler(BaseHTTPRequestHandler):
                 if not num_previo and auto_num:
                     num_previo = auto_num
 
-            # Abrir con PyMuPDF y dividir página por página
+            # Detectar curso previo si no vino indicado
+            if not curso_previo:
+                curso_previo = detectar_curso(f"{safe_basename} {asig_previa}", asig_previa)
+
+            # Abrir con PyMuPDF y dividir en bloques de paginas_por_examen
             try:
                 doc = pymupdf.open(stream=body, filetype="pdf")
             except Exception as e:
@@ -840,9 +1150,38 @@ class ExamHandler(BaseHTTPRequestHandler):
                 return
 
             num_pages = len(doc)
+
+            # Descartar páginas en blanco automáticamente
+            raw_descartar = self.headers.get("X-Descartar-Blancas", "1").strip()
+            descartar_blancas = (raw_descartar != "0")
+
+            if descartar_blancas:
+                valid_pages = [i for i, p in enumerate(doc) if not is_page_blank(p)]
+            else:
+                valid_pages = list(range(len(doc)))
+
+            if not valid_pages:
+                self.send_json({"error": "El archivo solo contiene páginas en blanco"}, status=400)
+                return
+
+            # Al procesarse correctamente la división, guardar con ' OK' en Escaneos_Originales
+            ok_basename = agregar_ok_nombre_archivo(safe_basename)
+            dest_orig_ok = os.path.join(ORIGINALES_DIR, ok_basename)
+            with open(dest_orig_ok, "wb") as f:
+                f.write(body)
+
+            # Si existía el archivo previo sin ' OK' en ORIGINALES_DIR y tiene distinto nombre, eliminarlo
+            dest_orig_antiguo = os.path.join(ORIGINALES_DIR, safe_basename)
+            if os.path.exists(dest_orig_antiguo) and dest_orig_antiguo != dest_orig_ok:
+                try:
+                    os.remove(dest_orig_antiguo)
+                except Exception as e:
+                    print(f"Aviso al limpiar archivo previo sin OK: {e}")
+
+            total_examenes = (len(valid_pages) + paginas_por_examen - 1) // paginas_por_examen
             state = load_state()
 
-            # Determinar el siguiente número de página disponible para esta fecha
+            # Determinar el siguiente número disponible para esta fecha
             existing_for_date = [f for f in os.listdir(DIVIDIDOS_DIR) if f.startswith(f"{fecha}_pag_") and f.endswith(".pdf")]
             start_idx = 1
             if existing_for_date:
@@ -857,23 +1196,23 @@ class ExamHandler(BaseHTTPRequestHandler):
                     start_idx = max(indices) + 1
 
             generados = []
-            ex_num_str = f"EX{num_previo}" if num_previo else "EX_PENDIENTE"
-            asig_str = asig_previa if asig_previa else "ASIG"
-            cod_str = cod_previo if cod_previo else "000"
-            nombre_prop = f"{fecha}.PENDIENTE.Examen interno.{asig_str}.{cod_str}.{ex_num_str}.pdf"
+            nombre_prop = formatear_nombre_examen(fecha, "PENDIENTE", "Examen interno", curso_previo, asig_previa, cod_previo, num_previo)
 
-            for i in range(num_pages):
-                curr_idx = start_idx + i
+            for ex_idx in range(total_examenes):
+                curr_idx = start_idx + ex_idx
                 out_name = f"{fecha}_pag_{curr_idx:03d}.pdf"
                 out_path = os.path.join(DIVIDIDOS_DIR, out_name)
 
+                chunk_indices = valid_pages[ex_idx * paginas_por_examen : (ex_idx + 1) * paginas_por_examen]
+
                 single_doc = pymupdf.open()
-                single_doc.insert_pdf(doc, from_page=i, to_page=i)
+                for p_idx in chunk_indices:
+                    single_doc.insert_pdf(doc, from_page=p_idx, to_page=p_idx)
                 single_doc.save(out_path)
                 single_doc.close()
 
-                # Generar miniatura inmediatamente
-                get_or_create_thumbnail(out_name)
+                # Generar miniatura inmediatamente (toma la cabecera visual de la 1ª página del examen)
+                get_or_create_thumbnail(out_name, force=True)
 
                 # Registrar en el estado con su sesión consecutiva y datos preasignados
                 state[out_name] = {
@@ -881,13 +1220,16 @@ class ExamHandler(BaseHTTPRequestHandler):
                     "fecha": fecha,
                     "alumno": "",
                     "tipo": "Examen interno",
+                    "curso": curso_previo,
                     "asignatura": asig_previa,
                     "codigo_easa": cod_previo,
                     "numero_examen": num_previo,
                     "estado": "pendiente",
                     "archivo_en_disco": None,
                     "nombre_final": nombre_prop,
-                    "sesion": sesion
+                    "sesion": sesion,
+                    "total_paginas": len(chunk_indices),
+                    "origen": ok_basename
                 }
                 generados.append(out_name)
 
@@ -897,9 +1239,13 @@ class ExamHandler(BaseHTTPRequestHandler):
             self.send_json({
                 "status": "ok",
                 "filename": filename,
+                "archivo_inicial_ok": ok_basename,
                 "fecha": fecha,
                 "sesion": sesion,
-                "paginas_generadas": num_pages,
+                "curso": curso_previo,
+                "total_paginas_pdf": num_pages,
+                "paginas_por_examen": paginas_por_examen,
+                "examenes_generados": total_examenes,
                 "total_examenes": len(state),
                 "primer_examen": generados[0] if generados else None,
                 "ultimo_examen": generados[-1] if generados else None
@@ -961,15 +1307,22 @@ class ExamHandler(BaseHTTPRequestHandler):
                 "id": pdf_name,
                 "fecha": fecha_fija,
                 "tipo": "Examen interno",
+                "curso": "ATPL",
                 "estado": "analizado"
             })
             
-            # Conservar asignatura y número de examen si ya fueron preasignados por el usuario
+            # Conservar curso, asignatura y número de examen si ya fueron preasignados por el usuario
             pre_asig = info.get("asignatura")
             pre_cod = info.get("codigo_easa")
             pre_num = info.get("numero_examen")
+            pre_curso = info.get("curso")
 
             info.update(ai_data)
+
+            if pre_curso:
+                info["curso"] = pre_curso
+            elif not info.get("curso"):
+                info["curso"] = detectar_curso(info.get("asignatura", ""), info.get("asignatura", ""))
 
             if pre_asig:
                 info["asignatura"] = pre_asig
@@ -982,9 +1335,15 @@ class ExamHandler(BaseHTTPRequestHandler):
             info["alumno"] = quitar_tildes(info.get("alumno", "").strip().upper())
             
             # Nombre propuesto (siempre en mayúsculas y sin tildes)
-            ex_num = f"EX{info['numero_examen']}" if info['numero_examen'] else "EX1"
-            raw_final = f"{info['fecha']}.{info['alumno']}.{info['tipo']}.{info['asignatura']}.{info['codigo_easa']}.{ex_num}.pdf"
-            info["nombre_final"] = quitar_tildes(raw_final)
+            info["nombre_final"] = formatear_nombre_examen(
+                info.get("fecha"),
+                info.get("alumno"),
+                info.get("tipo"),
+                info.get("curso", "ATPL"),
+                info.get("asignatura"),
+                info.get("codigo_easa"),
+                info.get("numero_examen")
+            )
             state[pdf_name] = info
             save_state(state)
             
@@ -1004,6 +1363,53 @@ class ExamHandler(BaseHTTPRequestHandler):
                     json.dump(ALUMNOS_ACTIVOS, f, indent=2, ensure_ascii=False)
             self.send_json({"status": "ok", "total": len(ALUMNOS_ACTIVOS), "alumnos": ALUMNOS_ACTIVOS})
 
+        elif path == "/api/alumnos/agregar":
+            # Agregar un único nuevo alumno a la lista oficial
+            nuevo = quitar_tildes(req_data.get("nombre", "").strip().upper())
+            if not nuevo or len(nuevo) < 3:
+                self.send_json({"error": "Nombre inválido"}, status=400)
+                return
+            if nuevo not in ALUMNOS_ACTIVOS:
+                ALUMNOS_ACTIVOS.append(nuevo)
+                ALUMNOS_ACTIVOS.sort()
+                with open(ALUMNOS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(ALUMNOS_ACTIVOS, f, indent=2, ensure_ascii=False)
+            self.send_json({"status": "ok", "total": len(ALUMNOS_ACTIVOS), "alumnos": ALUMNOS_ACTIVOS, "agregado": nuevo})
+            return
+
+        elif path == "/api/cursos":
+            # Agregar o actualizar cursos disponibles dinámicamente
+            global CURSOS_DISPONIBLES
+            sigla = quitar_tildes(req_data.get("sigla", "").strip().upper())
+            nombre = req_data.get("nombre", "").strip() or sigla
+            if not sigla:
+                self.send_json({"error": "Falta la sigla del curso"}, status=400)
+                return
+            existente = next((c for c in CURSOS_DISPONIBLES if c.get("sigla") == sigla), None)
+            if not existente:
+                CURSOS_DISPONIBLES.append({"sigla": sigla, "nombre": nombre})
+                with open(CURSOS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(CURSOS_DISPONIBLES, f, indent=2, ensure_ascii=False)
+            self.send_json({"status": "ok", "cursos": CURSOS_DISPONIBLES})
+            return
+
+        elif path == "/api/asignaturas":
+            # Agregar o actualizar asignaturas disponibles dinámicamente
+            global ASIGNATURAS_OFICIALES
+            sigla = quitar_tildes(req_data.get("sigla", "").strip().upper())
+            codigo = req_data.get("codigo", "").strip()
+            nombre = req_data.get("nombre", "").strip() or (f"{sigla} - {codigo}" if codigo else sigla)
+            if not sigla:
+                self.send_json({"error": "Falta la sigla de la asignatura"}, status=400)
+                return
+            existente = next((a for a in ASIGNATURAS_OFICIALES if a.get("sigla") == sigla), None)
+            if not existente:
+                ASIGNATURAS_OFICIALES.append({"sigla": sigla, "codigo": codigo, "nombre": nombre})
+                with open(ASIGNATURAS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(ASIGNATURAS_OFICIALES, f, indent=2, ensure_ascii=False)
+            self.send_json({"status": "ok", "asignaturas": ASIGNATURAS_OFICIALES})
+            return
+
         elif path == "/api/guardar_edicion":
             # Guarda los campos editados por el usuario
             item = req_data.get("item")
@@ -1013,7 +1419,10 @@ class ExamHandler(BaseHTTPRequestHandler):
             if item.get("alumno"):
                 item["alumno"] = quitar_tildes(item["alumno"].strip().upper())
             if item.get("nombre_final"):
-                item["nombre_final"] = quitar_tildes(item["nombre_final"])
+                clean_final = quitar_tildes(item["nombre_final"])
+                clean_final = clean_final.replace(".MEP.000.", ".MEP.").replace(".CESSNA.000.", ".CESSNA.").replace(".DA42.000.", ".DA42.").replace(".000.", ".")
+                clean_final = clean_final.replace(".MEP.MEP.", ".MEP.DA42.").replace(".CESSNA.CESSNA.", ".CESSNA.")
+                item["nombre_final"] = clean_final
             state = load_state()
             existing = state.get(item["id"], {})
             # Conservar la referencia al archivo real que existe en disco y su sesion
@@ -1037,6 +1446,8 @@ class ExamHandler(BaseHTTPRequestHandler):
                 if it.get("alumno"):
                     it["alumno"] = quitar_tildes(it["alumno"].strip().upper())
                 final_name = quitar_tildes(it.get("nombre_final", ""))
+                final_name = final_name.replace(".MEP.000.", ".MEP.").replace(".CESSNA.000.", ".CESSNA.").replace(".DA42.000.", ".DA42.").replace(".000.", ".")
+                final_name = final_name.replace(".MEP.MEP.", ".MEP.DA42.").replace(".CESSNA.CESSNA.", ".CESSNA.")
                 it["nombre_final"] = final_name
                 if not f_id or not final_name:
                     continue
@@ -1061,6 +1472,108 @@ class ExamHandler(BaseHTTPRequestHandler):
 
             self.send_json({"status": "ok", "renombrados": renombrados, "errores": errores})
 
+        elif path == "/api/eliminar_sesion":
+            sesion_target = str(req_data.get("sesion", "")).strip()
+            if not sesion_target:
+                self.send_json({"error": "Debe especificar la sesión a eliminar"}, status=400)
+                return
+            
+            state = load_state()
+            to_delete = [k for k, v in state.items() if isinstance(v, dict) and str(v.get("sesion", "")) == sesion_target]
+            
+            deleted_count = 0
+            for k in to_delete:
+                v = state[k]
+                del state[k]
+                deleted_count += 1
+                
+                # Eliminar de Examenes_Divididos
+                p_div = os.path.join(DIVIDIDOS_DIR, k)
+                if os.path.exists(p_div):
+                    try:
+                        os.remove(p_div)
+                    except Exception:
+                        pass
+                
+                # Eliminar miniatura (.png o .jpg)
+                for ext in [".png", ".jpg"]:
+                    p_thumb = os.path.join(THUMB_DIR, k.replace(".pdf", ext))
+                    if os.path.exists(p_thumb):
+                        try:
+                            os.remove(p_thumb)
+                        except Exception:
+                            pass
+                
+                # Eliminar si estaba renombrado
+                ren_name = v.get("archivo_en_disco") or v.get("nombre_final")
+                if ren_name:
+                    p_ren = os.path.join(RENOMBRADOS_DIR, ren_name)
+                    if not os.path.exists(p_ren):
+                        p_ren = os.path.join(RENOMBRADOS_DIR, sesion_target, os.path.basename(ren_name))
+                    if os.path.exists(p_ren):
+                        try:
+                            os.remove(p_ren)
+                        except Exception:
+                            pass
+            
+            # Limpiar carpeta de sesión en Examenes_Renombrados si quedó vacía
+            s_dir = os.path.join(RENOMBRADOS_DIR, sesion_target)
+            if os.path.exists(s_dir) and os.path.isdir(s_dir):
+                try:
+                    if not os.listdir(s_dir):
+                        os.rmdir(s_dir)
+                except Exception:
+                    pass
+            
+            save_state(state)
+            self.send_json({"status": "ok", "deleted_count": deleted_count, "sesion": sesion_target})
+            return
+
+        elif path == "/api/eliminar_examen":
+            ex_id = str(req_data.get("id", "")).strip()
+            if not ex_id:
+                self.send_json({"error": "Debe especificar el id del examen a eliminar"}, status=400)
+                return
+            
+            state = load_state()
+            if ex_id in state:
+                v = state[ex_id]
+                sesion_id = str(v.get("sesion", ""))
+                del state[ex_id]
+                
+                p_div = os.path.join(DIVIDIDOS_DIR, ex_id)
+                if os.path.exists(p_div):
+                    try:
+                        os.remove(p_div)
+                    except Exception:
+                        pass
+                
+                for ext in [".png", ".jpg"]:
+                    p_thumb = os.path.join(THUMB_DIR, ex_id.replace(".pdf", ext))
+                    if os.path.exists(p_thumb):
+                        try:
+                            os.remove(p_thumb)
+                        except Exception:
+                            pass
+                
+                ren_name = v.get("archivo_en_disco") or v.get("nombre_final")
+                if ren_name:
+                    p_ren = os.path.join(RENOMBRADOS_DIR, ren_name)
+                    if not os.path.exists(p_ren):
+                        p_ren = os.path.join(RENOMBRADOS_DIR, sesion_id, os.path.basename(ren_name))
+                    if os.path.exists(p_ren):
+                        try:
+                            os.remove(p_ren)
+                        except Exception:
+                            pass
+                
+                save_state(state)
+                self.send_json({"status": "ok", "id": ex_id})
+                return
+            else:
+                self.send_json({"error": "Examen no encontrado"}, status=404)
+                return
+
         # ========================================================
         # ENDPOINTS POST PARA ATLS (AIRCRAFT / FSTD TECHNICAL LOGS)
         # ========================================================
@@ -1074,15 +1587,24 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": "El archivo PDF recibido está vacío"}, status=400)
                 return
 
-            dest_orig = os.path.join(ATL_ORIGINALES_DIR, safe_basename)
-            with open(dest_orig, "wb") as f:
-                f.write(body)
-
             try:
                 doc = pymupdf.open(stream=body, filetype="pdf")
             except Exception as e:
                 self.send_json({"error": f"No se pudo leer el archivo PDF: {e}"}, status=400)
                 return
+
+            # Guardar copia del escaneo maestro en ATL_Originales con ' OK'
+            ok_basename = agregar_ok_nombre_archivo(safe_basename)
+            dest_orig_ok = os.path.join(ATL_ORIGINALES_DIR, ok_basename)
+            with open(dest_orig_ok, "wb") as f:
+                f.write(body)
+
+            dest_orig_ant = os.path.join(ATL_ORIGINALES_DIR, safe_basename)
+            if os.path.exists(dest_orig_ant) and dest_orig_ant != dest_orig_ok:
+                try:
+                    os.remove(dest_orig_ant)
+                except Exception:
+                    pass
 
             num_pages = len(doc)
             state = load_atl_state()
@@ -1126,7 +1648,7 @@ class ExamHandler(BaseHTTPRequestHandler):
 
                 item_info = {
                     "id": out_name,
-                    "origen": safe_basename,
+                    "origen": ok_basename,
                     "num_pagina": i + 1,
                     "fecha": fecha_det,
                     "avion": avion_det,
@@ -1144,6 +1666,7 @@ class ExamHandler(BaseHTTPRequestHandler):
             self.send_json({
                 "status": "ok",
                 "filename": filename,
+                "archivo_inicial_ok": ok_basename,
                 "paginas_generadas": num_pages,
                 "items": generados
             })
@@ -1373,8 +1896,8 @@ class ExamHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
 def run(port=8000):
-    server = HTTPServer(("localhost", port), ExamHandler)
-    print(f"Servidor iniciado en http://localhost:{port}")
+    server = HTTPServer(("0.0.0.0", port), ExamHandler)
+    print(f"Servidor iniciado en http://127.0.0.1:{port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

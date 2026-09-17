@@ -1,16 +1,97 @@
 [
-  {"sigla": "FPM", "codigo": "033", "nombre": "Flight Planning & Monitoring (FPM - 033)"},
-  {"sigla": "MET", "codigo": "050", "nombre": "Meteorology (MET - 050)"},
-  {"sigla": "GNAV", "codigo": "061", "nombre": "General Navigation (GNAV - 061)"},
-  {"sigla": "RNAV", "codigo": "062", "nombre": "Radio Navigation (RNAV - 062)"},
-  {"sigla": "ALW", "codigo": "010", "nombre": "Air Law / Derecho Aéreo (ALW - 010)"},
-  {"sigla": "AGK", "codigo": "021", "nombre": "Aircraft General Knowledge (AGK - 021)"},
-  {"sigla": "INS", "codigo": "022", "nombre": "Instrumentation (INS - 022)"},
-  {"sigla": "M&B", "codigo": "031", "nombre": "Mass & Balance (M&B - 031)"},
-  {"sigla": "PERF", "codigo": "032", "nombre": "Performance (PERF - 032)"},
-  {"sigla": "HPL", "codigo": "040", "nombre": "Human Performance (HPL - 040)"},
-  {"sigla": "OPS", "codigo": "070", "nombre": "Operational Procedures (OPS - 070)"},
-  {"sigla": "POF", "codigo": "081", "nombre": "Principles of Flight (POF - 081)"},
-  {"sigla": "COMM", "codigo": "090", "nombre": "Communications (COMM - 090)"},
-  {"sigla": "PPL", "codigo": "100", "nombre": "PPL General (PPL - 100)"}
+  {
+    "sigla": "FPM",
+    "codigo": "033",
+    "nombre": "Flight Planning & Monitoring (FPM - 033)"
+  },
+  {
+    "sigla": "MET",
+    "codigo": "050",
+    "nombre": "Meteorology (MET - 050)"
+  },
+  {
+    "sigla": "GNAV",
+    "codigo": "061",
+    "nombre": "General Navigation (GNAV - 061)"
+  },
+  {
+    "sigla": "RNAV",
+    "codigo": "062",
+    "nombre": "Radio Navigation (RNAV - 062)"
+  },
+  {
+    "sigla": "ALW",
+    "codigo": "010",
+    "nombre": "Air Law / Derecho Aéreo (ALW - 010)"
+  },
+  {
+    "sigla": "AGK",
+    "codigo": "021",
+    "nombre": "Aircraft General Knowledge (AGK - 021)"
+  },
+  {
+    "sigla": "INS",
+    "codigo": "022",
+    "nombre": "Instrumentation (INS - 022)"
+  },
+  {
+    "sigla": "M&B",
+    "codigo": "031",
+    "nombre": "Mass & Balance (M&B - 031)"
+  },
+  {
+    "sigla": "PERF",
+    "codigo": "032",
+    "nombre": "Performance (PERF - 032)"
+  },
+  {
+    "sigla": "HPL",
+    "codigo": "040",
+    "nombre": "Human Performance (HPL - 040)"
+  },
+  {
+    "sigla": "OPS",
+    "codigo": "070",
+    "nombre": "Operational Procedures (OPS - 070)"
+  },
+  {
+    "sigla": "POF",
+    "codigo": "081",
+    "nombre": "Principles of Flight (POF - 081)"
+  },
+  {
+    "sigla": "COMM",
+    "codigo": "090",
+    "nombre": "Communications (COMM - 090)"
+  },
+  {
+    "sigla": "PPL",
+    "codigo": "100",
+    "nombre": "PPL General (PPL - 100)"
+  },
+  {
+    "sigla": "DA42",
+    "codigo": "",
+    "nombre": "DA42 Twin Star (MEP)"
+  },
+  {
+    "sigla": "DA40",
+    "codigo": "",
+    "nombre": "Diamond DA40"
+  },
+  {
+    "sigla": "MEP",
+    "codigo": "",
+    "nombre": "Multi-Engine Piston (MEP)"
+  },
+  {
+    "sigla": "CESSNA",
+    "codigo": "",
+    "nombre": "Cessna Single Engine (CESSNA)"
+  },
+  {
+    "sigla": "PPT",
+    "codigo": "",
+    "nombre": "Prueba de progreso teórica"
+  }
 ]

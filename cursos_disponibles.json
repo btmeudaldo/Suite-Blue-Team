@@ -1,0 +1,22 @@
+[
+  {
+    "sigla": "ATPL",
+    "nombre": "ATPL - Transporte de Línea Aérea"
+  },
+  {
+    "sigla": "CESSNA",
+    "nombre": "CESSNA - Monomotor Cessna"
+  },
+  {
+    "sigla": "MEP",
+    "nombre": "MEP - Multi-Engine Piston"
+  },
+  {
+    "sigla": "DA40",
+    "nombre": "DA40 - Diamond DA40"
+  },
+  {
+    "sigla": "FI",
+    "nombre": "FI - Flight Instructor"
+  }
+]

@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="/public/app_icon.ico">
   <link rel="stylesheet" href="/public/style.css?v=20260917-recovery">
 </head>
 <body>
@@ -173,13 +174,17 @@
         </div>
 
         <div class="header-actions">
-          <button id="btn-open-upload" class="btn btn-primary" title="Cargar y dividir nuevos archivos PDF escaneados">
+          <button id="btn-open-upload" class="btn btn-primary" onclick="openUploadModal()" title="Cargar y dividir nuevos archivos PDF escaneados">
             <span class="btn-icon">📥</span>
             <span>Cargar Escaneos</span>
           </button>
-          <button id="btn-manage-alumnos" class="btn btn-outline" title="Ver o pegar la lista de alumnos que asistieron">
+          <button id="btn-manage-alumnos" class="btn btn-outline" onclick="openAlumnosModal()" title="Ver o pegar la lista de alumnos que asistieron">
             <span class="btn-icon">👥</span>
             <span>Alumnos (<span id="count-alumnos">31</span>)</span>
+          </button>
+          <button id="btn-manage-catalogo" class="btn btn-outline" onclick="openCatalogoModal()" title="Gestionar y añadir nuevos Cursos y Asignaturas">
+            <span class="btn-icon">🎓</span>
+            <span>Cursos & Materias</span>
           </button>
           <button id="btn-batch-rename" class="btn btn-success">
             <span class="btn-icon">💾</span>
@@ -190,10 +195,13 @@
 
       <!-- Barra de Filtros y Búsqueda -->
       <nav class="toolbar">
-        <div class="filter-group">
+        <div class="filter-group" style="display: flex; align-items: center; gap: 0.35rem;">
           <select id="select-filter-sesion" class="filter-select" title="Filtrar por Sesión">
             <option value="all">Sesión: Todas</option>
           </select>
+          <button id="btn-delete-sesion" class="btn btn-outline btn-sm" style="display: none; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); padding: 0.35rem 0.65rem;" onclick="deleteCurrentFilteredSession()" title="Eliminar completamente esta sesión y sus archivos">
+            🗑️ Borrar Sesión
+          </button>
         </div>
 
         <div class="filter-group">
@@ -206,6 +214,17 @@
           <button class="filter-btn active" data-status="all">Todos</button>
           <button class="filter-btn" data-status="pendiente">Pendientes</button>
           <button class="filter-btn" data-status="renombrado">Renombrados</button>
+        </div>
+
+        <div class="filter-group">
+          <select id="select-filter-curso" class="filter-select" title="Filtrar por Curso">
+            <option value="all">Curso: Todos</option>
+            <option value="ATPL">ATPL</option>
+            <option value="CESSNA">CESSNA</option>
+            <option value="MEP">MEP</option>
+            <option value="DA40">DA40</option>
+            <option value="FI">FI</option>
+          </select>
         </div>
 
         <div class="filter-group">
@@ -296,7 +315,7 @@
         </div>
 
         <div class="header-actions">
-          <button id="btn-atl-open-upload" class="btn btn-success" title="Subir archivo PDF escaneado con hojas de ATL">
+          <button id="btn-atl-open-upload" class="btn btn-success" onclick="openAtlUploadModal()" title="Subir archivo PDF escaneado con hojas de ATL">
             <span class="btn-icon">📥</span>
             <span>Cargar PDF ATL</span>
           </button>
@@ -397,6 +416,131 @@
     </div>
   </div>
 
+  <!-- Modal: Gestionar y Añadir Cursos y Asignaturas -->
+  <div id="modal-catalogo-container" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeCatalogoModal()"></div>
+    <div class="modal-content" style="max-width: 650px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3>🎓 Catálogo de Cursos y Asignaturas</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Añade nuevos cursos o asignaturas. Quedarán guardados automáticamente en todos los desplegables de la aplicación.
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeCatalogoModal()">&times;</button>
+      </div>
+      
+      <!-- Pestañas Cursos / Asignaturas -->
+      <div style="display: flex; border-bottom: 1px solid var(--border-color); background: var(--bg-card); padding: 0 1.25rem; gap: 0.5rem;">
+        <button id="tab-btn-cursos" class="filter-btn active" style="border-radius: 0; border: none; border-bottom: 2px solid var(--primary); background: transparent; padding: 0.75rem 1rem; color: var(--primary); font-weight: 700; cursor: pointer;" onclick="switchCatalogoTab('cursos')">
+          🎓 Cursos (<span id="count-catalogo-cursos">5</span>)
+        </button>
+        <button id="tab-btn-asigs" class="filter-btn" style="border-radius: 0; border: none; background: transparent; padding: 0.75rem 1rem; color: var(--text-muted); font-weight: 600; cursor: pointer;" onclick="switchCatalogoTab('asigs')">
+          📚 Asignaturas (<span id="count-catalogo-asigs">18</span>)
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem; background: var(--bg-card); flex-direction: column; gap: 1.25rem;">
+        <!-- Panel 1: Cursos -->
+        <div id="panel-catalogo-cursos" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.75rem;">
+            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">➕ Añadir Nuevo Curso</span>
+            <div style="display: grid; grid-template-columns: 120px 1fr auto; gap: 0.6rem; align-items: center;">
+              <input type="text" id="input-nuevo-curso-sigla" class="input-field" placeholder="Sigla (ej: MCC)" maxlength="10" style="text-transform: uppercase; font-weight: 700;">
+              <input type="text" id="input-nuevo-curso-nombre" class="input-field" placeholder="Nombre completo (ej: MCC - Multi Crew Cooperation)">
+              <button class="btn btn-primary btn-sm" onclick="guardarNuevoCurso()">Guardar</button>
+            </div>
+          </div>
+          <div style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;" id="lista-catalogo-cursos">
+            <!-- Renderizado dinámico -->
+          </div>
+        </div>
+
+        <!-- Panel 2: Asignaturas -->
+        <div id="panel-catalogo-asigs" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.75rem;">
+            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">➕ Añadir Nueva Asignatura</span>
+            <div style="display: grid; grid-template-columns: 110px 90px 1fr auto; gap: 0.6rem; align-items: center;">
+              <input type="text" id="input-nueva-asig-sigla" class="input-field" placeholder="Sigla (DA42)" maxlength="10" style="text-transform: uppercase; font-weight: 700;">
+              <input type="text" id="input-nueva-asig-cod" class="input-field" placeholder="Cód (070)" maxlength="5">
+              <input type="text" id="input-nueva-asig-nombre" class="input-field" placeholder="Nombre (ej: DA42 Twin Star)">
+              <button class="btn btn-primary btn-sm" onclick="guardarNuevaAsignatura()">Guardar</button>
+            </div>
+          </div>
+          <div style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;" id="lista-catalogo-asigs">
+            <!-- Renderizado dinámico -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 0.85rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+        <button class="btn btn-outline btn-sm" onclick="closeCatalogoModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmación de Alumno Nuevo / Corrección de Tipografía -->
+  <div id="modal-confirm-alumno" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeConfirmAlumnoModal(false)"></div>
+    <div class="modal-content" style="max-width: 530px; width: 92%; border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.85);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.5rem;">👤</span>
+          <div>
+            <h3 id="confirm-alumno-title" style="font-size: 1.05rem; margin: 0;">Confirmar Nombre de Alumno</h3>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Comprobación con la lista oficial de alumnos</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeConfirmAlumnoModal(false)">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.35rem; background: var(--bg-card); display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Nombre introducido:</span>
+          <div id="confirm-alumno-entered" style="font-size: 1.1rem; font-weight: 700; color: #ffffff; margin-top: 0.25rem; padding: 0.5rem 0.75rem; background: var(--bg-input); border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;"></div>
+        </div>
+
+        <!-- Sugerencia si se detecta posible errata / parecido -->
+        <div id="confirm-alumno-suggestion-box" class="hidden" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-sm); padding: 0.75rem 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; color: #f59e0b; font-weight: 600; font-size: 0.85rem;">
+            <span>⚠️</span>
+            <span>¿Posible error tipográfico?</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-main); margin-top: 0.3rem;">
+            En la lista oficial existe un alumno muy similar:
+          </p>
+          <div id="confirm-alumno-suggested-name" style="font-size: 1rem; font-weight: 700; color: #fbbf24; margin-top: 0.25rem; font-family: monospace;"></div>
+        </div>
+
+        <p id="confirm-alumno-msg" style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+          Este alumno no figura en la lista oficial. ¿Deseas agregarlo permanentemente a la lista para futuros autocompletados?
+        </p>
+
+        <!-- Botones de Acción -->
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem;">
+          <!-- Botón de corrección si hay sugerencia -->
+          <button id="btn-confirm-use-suggestion" class="btn btn-warning hidden" style="justify-content: center; font-weight: 700;">
+            <span>✓ Corregir y usar sugerencia</span>
+          </button>
+          
+          <!-- Botón de añadir nuevo -->
+          <button id="btn-confirm-add-new" class="btn btn-success" style="justify-content: center; font-weight: 700;">
+            <span>➕ Añadir como Nuevo Alumno Oficial</span>
+          </button>
+          
+          <!-- Botón de mantener solo en este examen sin añadir a lista oficial -->
+          <button id="btn-confirm-keep-only" class="btn btn-outline" style="justify-content: center; font-size: 0.82rem;">
+            <span>📝 Mantener solo en este examen (sin añadir a lista)</span>
+          </button>
+
+          <!-- Botón de cancelar -->
+          <button class="btn btn-outline" style="justify-content: center; font-size: 0.82rem; color: var(--text-dim);" onclick="closeConfirmAlumnoModal(false)">
+            <span>✏️ Cancelar y seguir editando</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Asistente: Carga y División de Escaneos de Exámenes -->
   <div id="modal-upload-container" class="modal hidden">
     <div class="modal-backdrop" id="backdrop-upload"></div>
@@ -473,15 +617,21 @@
 
           <div id="upload-files-list" class="upload-files-list"></div>
 
-          <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; gap: 1.5rem; font-size: 0.82rem;">
-            <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-              <input type="radio" name="upload-mode" value="acumular" checked>
-              <span>➕ Añadir a los exámenes actuales</span>
+          <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.82rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-weight: 500;">
+              <input type="checkbox" id="chk-descartar-blancas" checked>
+              <span>🗑️ <strong>Descartar páginas en blanco automáticamente</strong> (elimina reversos vacíos de escaneos dúplex)</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-              <input type="radio" name="upload-mode" value="nueva_convocatoria">
-              <span>🆕 Nueva convocatoria limpia (respalda los actuales)</span>
-            </label>
+            <div style="display: flex; gap: 1.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                <input type="radio" name="upload-mode" value="acumular" checked>
+                <span>➕ Añadir a los exámenes actuales</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                <input type="radio" name="upload-mode" value="nueva_convocatoria">
+                <span>🆕 Nueva convocatoria limpia (respalda los actuales)</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -730,10 +880,16 @@
           </div>
         </div>
 
-        <!-- Botón de Ejecución Principal -->
-        <div class="sec-action-bar">
+        <!-- Botones de Acción -->
+        <div class="sec-action-bar" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
           <button id="btn-ejecutar-renumeracion" class="btn btn-warning btn-lg" onclick="ejecutarRenumeracion()">
             🚀 Renumerar Talonario Ahora
+          </button>
+          <button id="btn-verificar-pnsn" class="btn btn-info btn-lg" onclick="verificarPNSNActual()" style="background: #0284c7; color: white; border: none; font-weight: 600;">
+            🔍 Comprobar P/N y S/N
+          </button>
+          <button id="btn-verificar-todos-pnsn" class="btn btn-secondary btn-lg" onclick="verificarPNSNTodos()" style="font-weight: 600;">
+            📋 Comprobar Toda la Flota
           </button>
         </div>
       </div>
@@ -758,7 +914,7 @@
   <!-- Modal de Resultados / Éxito -->
   <div id="secuencia-modal" class="modal hidden">
     <div class="modal-backdrop" onclick="cerrarModalSecuencia()"></div>
-    <div class="modal-content" style="max-width: 580px; width: 95%;">
+    <div class="modal-content" style="max-width: 760px; width: 95%;">
       <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
         <div>
           <h3 id="sec-modal-title">🎉 ¡Talonario Renumerado con Éxito!</h3>

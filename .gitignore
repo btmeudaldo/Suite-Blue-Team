@@ -40,3 +40,5 @@ test_*.png
 .idea/
 .DS_Store
 Thumbs.db
+output/
+.playwright-cli/

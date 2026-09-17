@@ -14,6 +14,17 @@ import shutil
 import zipfile
 import xml.etree.ElementTree as ET
 
+# Importar utilidades de verificación técnica P/N y S/N
+try:
+    from verificar_atl import (
+        verificar_atl_documento,
+        verificar_todos_los_atl,
+        TABLA_REFERENCIA_MOTORES_HELICES,
+        TABLA_REFERENCIA_ACCESORIOS
+    )
+except ImportError:
+    pass
+
 W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 
 # Registrar namespaces para preservar formato XML exacto de Word

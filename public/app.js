@@ -3,6 +3,7 @@ let examenes = [];
 let activeSessionFilter = 'all';
 let activeDayFilter = 'all';
 let activeStatusFilter = 'all';
+let activeCursoFilter = 'all';
 let activeAsigFilter = 'all';
 let activeNumExFilter = 'all';
 let searchQuery = '';
@@ -18,6 +19,7 @@ const statDoneEl = document.getElementById('stat-done');
 
 const selectFilterSesion = document.getElementById('select-filter-sesion');
 const selectFilterFecha = document.getElementById('select-filter-fecha');
+const selectFilterCurso = document.getElementById('select-filter-curso');
 const selectFilterAsig = document.getElementById('select-filter-asig');
 const selectFilterNumEx = document.getElementById('select-filter-num-ex');
 
@@ -39,6 +41,44 @@ const modalBackdrop = document.querySelector('.modal-backdrop');
 
 let listaAlumnosMemoria = [];
 let listaAsignaturasMemoria = [];
+let listaCursosMemoria = [
+  { sigla: "ATPL", nombre: "ATPL - Transporte de Línea Aérea" },
+  { sigla: "CESSNA", nombre: "CESSNA - Monomotor Cessna" },
+  { sigla: "MEP", nombre: "MEP - Multi-Engine Piston" },
+  { sigla: "DA40", nombre: "DA40 - Diamond DA40" },
+  { sigla: "FI", nombre: "FI - Flight Instructor" }
+];
+
+// Cargar catálogo de cursos disponibles
+async function loadCursos() {
+  try {
+    const res = await fetch('/api/cursos');
+    const cursos = await res.json();
+    if (Array.isArray(cursos) && cursos.length > 0) {
+      listaCursosMemoria = cursos;
+    }
+  } catch (err) {
+    console.error('Error cargando lista de cursos:', err);
+  }
+}
+
+function updateCursoFilterOptions() {
+  if (!selectFilterCurso) return;
+  const currentVal = activeCursoFilter;
+  selectFilterCurso.innerHTML = `
+    <option value="all">Curso: Todos</option>
+    ${listaCursosMemoria.map(cu => `
+      <option value="${cu.sigla}" ${currentVal === cu.sigla ? 'selected' : ''}>
+        Curso: ${cu.sigla}
+      </option>
+    `).join('')}
+  `;
+  if (currentVal !== 'all') {
+    selectFilterCurso.classList.add('active-filter');
+  } else {
+    selectFilterCurso.classList.remove('active-filter');
+  }
+}
 
 // Cargar asignaturas oficiales EASA
 async function loadAsignaturas() {
@@ -144,12 +184,468 @@ async function saveAlumnosList() {
   }
 }
 
+// --- Control y Verificación de Alumnos Nuevos / Detección de Erratas ---
+let confirmedNewStudents = new Set();
+let confirmAlumnoContext = null;
+
+// Algoritmo de distancia de Levenshtein
+function levenshteinDistance(s1, s2) {
+  s1 = (s1 || '').trim().toUpperCase();
+  s2 = (s2 || '').trim().toUpperCase();
+  if (s1 === s2) return 0;
+  if (!s1.length) return s2.length;
+  if (!s2.length) return s1.length;
+
+  const d = [];
+  for (let i = 0; i <= s1.length; i++) d[i] = [i];
+  for (let j = 0; j <= s2.length; j++) d[0][j] = j;
+
+  for (let i = 1; i <= s1.length; i++) {
+    for (let j = 1; j <= s2.length; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1,
+        d[i][j - 1] + 1,
+        d[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return d[s1.length][s2.length];
+}
+
+// Buscar si existe un alumno similar en la lista oficial (por si es una errata)
+function findSimilarStudent(name, list) {
+  if (!name || !list || list.length === 0) return null;
+  const clean = quitarTildes(name.trim().toUpperCase());
+  if (clean.length < 3) return null;
+
+  // Si ya está exactamente en la lista oficial, no es una errata
+  if (list.some(a => quitarTildes(a.trim().toUpperCase()) === clean)) return null;
+
+  const inputTokens = clean.split(/\s+/).filter(t => t.length > 1);
+  let bestMatch = null;
+  let minScore = 999;
+
+  for (const item of list) {
+    const itemClean = quitarTildes(item.trim().toUpperCase());
+    
+    // 1. Comprobación directa por Levenshtein en toda la cadena (diferencia <= 2 caracteres)
+    const dist = levenshteinDistance(clean, itemClean);
+    if (dist <= 2 && dist < minScore) {
+      minScore = dist;
+      bestMatch = itemClean;
+      continue;
+    }
+
+    // 2. Comprobación token por token (nombres compuestos, apellidos)
+    const itemTokens = itemClean.split(/\s+/).filter(t => t.length > 1);
+    if (inputTokens.length > 0 && itemTokens.length > 0) {
+      let matchedTokens = 0;
+      let tokenTypos = 0;
+
+      for (const it of inputTokens) {
+        if (itemTokens.includes(it)) {
+          matchedTokens++;
+        } else {
+          // Errata de 1 carácter en alguna palabra (ej: MORALEZ vs MORALES)
+          const closeTok = itemTokens.find(t => levenshteinDistance(it, t) === 1);
+          if (closeTok) {
+            matchedTokens++;
+            tokenTypos++;
+          }
+        }
+      }
+
+      const tokenMatchRatio = matchedTokens / Math.max(inputTokens.length, itemTokens.length);
+      const isSubMatch = matchedTokens >= 2 && (matchedTokens === inputTokens.length || tokenMatchRatio >= 0.6);
+      
+      if (isSubMatch || (inputTokens.length === 1 && matchedTokens === 1 && inputTokens[0].length >= 4 && tokenTypos <= 1)) {
+        const score = 10 + (itemClean.length - clean.length) + (tokenTypos * 2);
+        if (score < minScore) {
+          minScore = score;
+          bestMatch = itemClean;
+        }
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
+// Abrir modal de confirmación
+function openConfirmAlumnoModal(enteredName, examId, inputEl, onConfirmed = null) {
+  const clean = quitarTildes((enteredName || '').trim().toUpperCase());
+  if (!clean || clean === 'PENDIENTE' || clean.length < 3) {
+    if (typeof onConfirmed === 'function') onConfirmed();
+    return;
+  }
+
+  // Si ya está en la lista oficial o ya fue confirmado en esta sesión, no preguntar
+  const isOfficial = listaAlumnosMemoria.some(a => quitarTildes(a.trim().toUpperCase()) === clean);
+  if (isOfficial || confirmedNewStudents.has(clean)) {
+    if (typeof onConfirmed === 'function') onConfirmed();
+    return;
+  }
+
+  // Si el modal ya está abierto con este mismo alumno, simplemente actualizar callback si existe
+  const modal = document.getElementById('modal-confirm-alumno');
+  if (modal && !modal.classList.contains('hidden') && confirmAlumnoContext && confirmAlumnoContext.enteredName === clean) {
+    if (onConfirmed) confirmAlumnoContext.onConfirmed = onConfirmed;
+    return;
+  }
+
+  const suggested = findSimilarStudent(clean, listaAlumnosMemoria);
+
+  confirmAlumnoContext = {
+    enteredName: clean,
+    suggestedName: suggested,
+    examId: examId,
+    inputEl: inputEl,
+    onConfirmed: onConfirmed
+  };
+
+  const enteredEl = document.getElementById('confirm-alumno-entered');
+  const sugBox = document.getElementById('confirm-alumno-suggestion-box');
+  const sugNameEl = document.getElementById('confirm-alumno-suggested-name');
+  const btnSug = document.getElementById('btn-confirm-use-suggestion');
+  const msgEl = document.getElementById('confirm-alumno-msg');
+
+  if (enteredEl) enteredEl.textContent = clean;
+
+  if (suggested) {
+    if (sugBox) sugBox.classList.remove('hidden');
+    if (sugNameEl) sugNameEl.textContent = suggested;
+    if (btnSug) {
+      btnSug.classList.remove('hidden');
+      btnSug.innerHTML = `<span>✓ Corregir y usar sugerencia: <strong>${suggested}</strong></span>`;
+    }
+    if (msgEl) {
+      msgEl.innerHTML = `¿Te has equivocado en alguna letra o falta algún apellido? Puedes corregirlo directamente con la sugerencia, o agregarlo como un nuevo alumno oficial.`;
+    }
+  } else {
+    if (sugBox) sugBox.classList.add('hidden');
+    if (btnSug) btnSug.classList.add('hidden');
+    if (msgEl) {
+      msgEl.textContent = `Este alumno no figura en la lista oficial. ¿Deseas agregarlo permanentemente a la lista para futuros autocompletados?`;
+    }
+  }
+
+  if (modal) modal.classList.remove('hidden');
+}
+
+// Cerrar modal de confirmación
+function closeConfirmAlumnoModal(cancel = false) {
+  const modal = document.getElementById('modal-confirm-alumno');
+  if (modal) modal.classList.add('hidden');
+  if (cancel && confirmAlumnoContext && confirmAlumnoContext.inputEl) {
+    confirmAlumnoContext.inputEl.focus();
+  }
+  confirmAlumnoContext = null;
+}
+
+// Aplicar alumno seleccionado a la tarjeta
+function applyStudentSelection(examId, inputEl, studentName) {
+  const cleanName = quitarTildes(studentName.trim().toUpperCase());
+  if (inputEl) {
+    inputEl.value = cleanName;
+  }
+  const item = examenes.find(x => x.id === examId);
+  if (item) {
+    item.alumno = cleanName;
+    const newName = buildFinalName(item);
+    item.nombre_final = newName;
+    const previewEl = document.getElementById(`preview-${examId}`);
+    if (previewEl) previewEl.textContent = newName;
+    saveItemEdit(item);
+  }
+}
+
+// Agregar permanentemente un nuevo alumno a la lista oficial (backend)
+async function agregarNuevoAlumnoOficial(nombre) {
+  const clean = quitarTildes((nombre || '').trim().toUpperCase());
+  if (!clean || clean.length < 3) return;
+
+  try {
+    const res = await fetch('/api/alumnos/agregar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: clean })
+    });
+    const data = await res.json();
+    if (data.status === 'ok' && Array.isArray(data.alumnos)) {
+      listaAlumnosMemoria = data.alumnos;
+      updateAlumnosUI(data.alumnos);
+    }
+  } catch (err) {
+    console.error('Error agregando alumno oficial:', err);
+    alert('No se pudo guardar el nuevo alumno en el servidor: ' + err.message);
+  }
+}
+
+// Handlers de los botones del modal de confirmación
+async function handleConfirmUseSuggestion() {
+  if (!confirmAlumnoContext || !confirmAlumnoContext.suggestedName) return;
+  const chosen = confirmAlumnoContext.suggestedName;
+  const examId = confirmAlumnoContext.examId;
+  const inputEl = confirmAlumnoContext.inputEl;
+  const callback = confirmAlumnoContext.onConfirmed;
+
+  applyStudentSelection(examId, inputEl, chosen);
+  closeConfirmAlumnoModal(false);
+
+  if (typeof callback === 'function') {
+    callback();
+  }
+}
+
+async function handleConfirmAddNew() {
+  if (!confirmAlumnoContext) return;
+  const newName = confirmAlumnoContext.enteredName;
+  const examId = confirmAlumnoContext.examId;
+  const inputEl = confirmAlumnoContext.inputEl;
+  const callback = confirmAlumnoContext.onConfirmed;
+
+  await agregarNuevoAlumnoOficial(newName);
+  confirmedNewStudents.add(newName);
+
+  applyStudentSelection(examId, inputEl, newName);
+  closeConfirmAlumnoModal(false);
+
+  if (typeof callback === 'function') {
+    callback();
+  }
+}
+
+function handleConfirmKeepOnly() {
+  if (!confirmAlumnoContext) return;
+  const name = confirmAlumnoContext.enteredName;
+  const examId = confirmAlumnoContext.examId;
+  const inputEl = confirmAlumnoContext.inputEl;
+  const callback = confirmAlumnoContext.onConfirmed;
+
+  confirmedNewStudents.add(name);
+  applyStudentSelection(examId, inputEl, name);
+  closeConfirmAlumnoModal(false);
+
+  if (typeof callback === 'function') {
+    callback();
+  }
+}
+
+// Modal y Catálogo de Cursos y Asignaturas
+let catalogoContext = {
+  tab: 'cursos',
+  targetSelect: null,
+  targetItem: null
+};
+
+function openCatalogoModal(tab = 'cursos', targetSelect = null, targetItem = null) {
+  catalogoContext = { tab, targetSelect, targetItem };
+  const modal = document.getElementById('modal-catalogo-container');
+  if (modal) modal.classList.remove('hidden');
+  switchCatalogoTab(tab);
+  renderCatalogoList();
+}
+
+function closeCatalogoModal() {
+  const modal = document.getElementById('modal-catalogo-container');
+  if (modal) modal.classList.add('hidden');
+  catalogoContext = { tab: 'cursos', targetSelect: null, targetItem: null };
+}
+
+function switchCatalogoTab(tab) {
+  catalogoContext.tab = tab;
+  const btnCursos = document.getElementById('tab-btn-cursos');
+  const btnAsigs = document.getElementById('tab-btn-asigs');
+  const panelCursos = document.getElementById('panel-catalogo-cursos');
+  const panelAsigs = document.getElementById('panel-catalogo-asigs');
+
+  if (tab === 'cursos') {
+    if (btnCursos) {
+      btnCursos.style.borderBottom = '2px solid var(--primary)';
+      btnCursos.style.color = 'var(--primary)';
+      btnCursos.style.fontWeight = '700';
+    }
+    if (btnAsigs) {
+      btnAsigs.style.borderBottom = 'none';
+      btnAsigs.style.color = 'var(--text-muted)';
+      btnAsigs.style.fontWeight = '600';
+    }
+    if (panelCursos) panelCursos.classList.remove('hidden');
+    if (panelAsigs) panelAsigs.classList.add('hidden');
+    setTimeout(() => {
+      const inp = document.getElementById('input-nuevo-curso-sigla');
+      if (inp) inp.focus();
+    }, 100);
+  } else {
+    if (btnAsigs) {
+      btnAsigs.style.borderBottom = '2px solid var(--primary)';
+      btnAsigs.style.color = 'var(--primary)';
+      btnAsigs.style.fontWeight = '700';
+    }
+    if (btnCursos) {
+      btnCursos.style.borderBottom = 'none';
+      btnCursos.style.color = 'var(--text-muted)';
+      btnCursos.style.fontWeight = '600';
+    }
+    if (panelAsigs) panelAsigs.classList.remove('hidden');
+    if (panelCursos) panelCursos.classList.add('hidden');
+    setTimeout(() => {
+      const inp = document.getElementById('input-nueva-asig-sigla');
+      if (inp) inp.focus();
+    }, 100);
+  }
+}
+
+function renderCatalogoList() {
+  const countCursos = document.getElementById('count-catalogo-cursos');
+  const countAsigs = document.getElementById('count-catalogo-asigs');
+  if (countCursos) countCursos.textContent = listaCursosMemoria.length;
+  if (countAsigs) countAsigs.textContent = listaAsignaturasMemoria.length;
+
+  const listCursos = document.getElementById('lista-catalogo-cursos');
+  if (listCursos) {
+    listCursos.innerHTML = listaCursosMemoria.map(c => `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-weight: 700; color: var(--primary); font-size: 0.85rem; min-width: 60px;">${c.sigla}</span>
+          <span style="font-size: 0.82rem; color: var(--text-main);">${c.nombre || ''}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const listAsigs = document.getElementById('lista-catalogo-asigs');
+  if (listAsigs) {
+    listAsigs.innerHTML = listaAsignaturasMemoria.map(a => `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-weight: 700; color: var(--primary); font-size: 0.85rem; min-width: 60px;">${a.sigla}</span>
+          ${a.codigo ? `<span style="font-size: 0.75rem; background: rgba(14,165,233,0.15); color: #38bdf8; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600;">${a.codigo}</span>` : ''}
+          <span style="font-size: 0.82rem; color: var(--text-main);">${a.nombre || ''}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+async function guardarNuevoCurso() {
+  const inputSigla = document.getElementById('input-nuevo-curso-sigla');
+  const inputNombre = document.getElementById('input-nuevo-curso-nombre');
+  if (!inputSigla) return;
+
+  const sigla = quitarTildes(inputSigla.value.trim().toUpperCase());
+  const nombre = inputNombre ? inputNombre.value.trim() : '';
+
+  if (!sigla) {
+    alert('Por favor introduce la sigla del curso (ej: MCC, IFR, PPL)');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/cursos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sigla, nombre })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      await loadCursos();
+      updateCursoFilterOptions();
+      renderCatalogoList();
+      inputSigla.value = '';
+      if (inputNombre) inputNombre.value = '';
+
+      // Si se abrió desde un escaneo en el modal de subida:
+      if (catalogoContext.targetItem && String(catalogoContext.targetItem.id).startsWith('scan_')) {
+        catalogoContext.targetItem.curso = sigla;
+      } else if (catalogoContext.targetItem) {
+        // Se abrió desde una tarjeta individual de examen
+        catalogoContext.targetItem.curso = sigla;
+        catalogoContext.targetItem.nombre_final = buildFinalName(catalogoContext.targetItem);
+        saveItemEdit(catalogoContext.targetItem);
+      }
+
+      // SIEMPRE re-renderizar todas las tarjetas de examen de la pantalla principal
+      renderExams();
+      if (selectedScanFiles.length > 0) {
+        renderSelectedUploadFiles();
+      }
+
+      closeCatalogoModal();
+    } else {
+      alert('Error guardando curso: ' + (data.error || 'Desconocido'));
+    }
+  } catch (err) {
+    alert('Error de conexión: ' + err.message);
+  }
+}
+
+async function guardarNuevaAsignatura() {
+  const inputSigla = document.getElementById('input-nueva-asig-sigla');
+  const inputCod = document.getElementById('input-nueva-asig-cod');
+  const inputNombre = document.getElementById('input-nueva-asig-nombre');
+  if (!inputSigla) return;
+
+  const sigla = quitarTildes(inputSigla.value.trim().toUpperCase());
+  const codigo = inputCod ? inputCod.value.trim() : '';
+  const nombre = inputNombre ? inputNombre.value.trim() : '';
+
+  if (!sigla) {
+    alert('Por favor introduce la sigla de la asignatura (ej: DA42, CRM, RVSM)');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/asignaturas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sigla, codigo, nombre })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      await loadAsignaturas();
+      updateAsignaturaFilterOptions();
+      renderCatalogoList();
+      inputSigla.value = '';
+      if (inputCod) inputCod.value = '';
+      if (inputNombre) inputNombre.value = '';
+
+      // Si se abrió desde un escaneo en el modal de subida:
+      if (catalogoContext.targetItem && String(catalogoContext.targetItem.id).startsWith('scan_')) {
+        catalogoContext.targetItem.asignatura = sigla;
+        catalogoContext.targetItem.codigo_easa = codigo || '';
+      } else if (catalogoContext.targetItem) {
+        // Se abrió desde una tarjeta individual de examen
+        catalogoContext.targetItem.asignatura = sigla;
+        catalogoContext.targetItem.codigo_easa = codigo || '';
+        catalogoContext.targetItem.nombre_final = buildFinalName(catalogoContext.targetItem);
+        saveItemEdit(catalogoContext.targetItem);
+      }
+
+      // SIEMPRE re-renderizar todas las tarjetas de examen de la pantalla principal
+      renderExams();
+      if (selectedScanFiles.length > 0) {
+        renderSelectedUploadFiles();
+      }
+
+      closeCatalogoModal();
+    } else {
+      alert('Error guardando asignatura: ' + (data.error || 'Desconocido'));
+    }
+  } catch (err) {
+    alert('Error de conexión: ' + err.message);
+  }
+}
+
 // Cargar exámenes desde el servidor
 async function loadExamenes() {
   try {
     await loadAlumnos();
     await loadAsignaturas();
+    await loadCursos();
     updateAsignaturaFilterOptions();
+    updateCursoFilterOptions();
     examenes = await loadStateItems('/api/examenes', 'exam-state-notice');
     updateStats();
     updateSesionFilterOptions();
@@ -177,6 +673,16 @@ function updateSesionFilterOptions() {
     selectFilterSesion.classList.add('active-filter');
   } else {
     selectFilterSesion.classList.remove('active-filter');
+  }
+
+  const btnDelSesion = document.getElementById('btn-delete-sesion');
+  if (btnDelSesion) {
+    if (activeSessionFilter !== 'all') {
+      btnDelSesion.style.display = 'inline-flex';
+      btnDelSesion.textContent = `🗑️ Borrar Sesión ${activeSessionFilter}`;
+    } else {
+      btnDelSesion.style.display = 'none';
+    }
   }
 }
 
@@ -208,7 +714,7 @@ function updateAsignaturaFilterOptions() {
     <option value="all">Asignatura: Todas</option>
     ${listaAsignaturasMemoria.map(as => `
       <option value="${as.sigla}" ${currentVal === as.sigla ? 'selected' : ''}>
-        ${as.sigla} - ${as.codigo}
+        ${as.sigla}${as.codigo ? ' - ' + as.codigo : (as.nombre ? ' (' + as.nombre + ')' : '')}
       </option>
     `).join('')}
   `;
@@ -225,11 +731,25 @@ function buildFinalName(item) {
   const fecha = item.fecha || '260907';
   const alumno = quitarTildes((item.alumno || 'PENDIENTE').trim().toUpperCase());
   const tipo = item.tipo || 'Examen interno';
-  const asig = (item.asignatura || 'ASIG').trim();
-  const cod = (item.codigo_easa || '000').trim();
+  const curso = (item.curso || 'ATPL').trim().toUpperCase();
+  const asig = (item.asignatura || 'ASIG').trim().toUpperCase();
+  const cod = (item.codigo_easa || '').trim();
   const rawNum = String(item.numero_examen !== undefined && item.numero_examen !== null ? item.numero_examen : '').trim().replace(/^EX/i, '');
   const numEx = rawNum ? `EX${rawNum}` : 'EX_PENDIENTE';
-  return quitarTildes(`${fecha}.${alumno}.${tipo}.${asig}.${cod}.${numEx}.pdf`);
+  
+  if (curso === asig) {
+    if (cod && cod !== '000') {
+      return quitarTildes(`${fecha}.${alumno}.${tipo}.${curso}.${cod}.${numEx}.pdf`);
+    } else {
+      return quitarTildes(`${fecha}.${alumno}.${tipo}.${curso}.${numEx}.pdf`);
+    }
+  } else {
+    if (cod && cod !== '000' && asig !== 'MEP' && asig !== 'CESSNA' && asig !== 'DA40' && asig !== 'DA42' && asig !== 'FI') {
+      return quitarTildes(`${fecha}.${alumno}.${tipo}.${curso}.${asig}.${cod}.${numEx}.pdf`);
+    } else {
+      return quitarTildes(`${fecha}.${alumno}.${tipo}.${curso}.${asig}.${numEx}.pdf`);
+    }
+  }
 }
 
 // Actualizar contadores
@@ -268,6 +788,13 @@ function renderExams() {
     } else if (activeStatusFilter !== 'all' && item.estado !== activeStatusFilter) {
       return false;
     }
+    // Filtro de curso
+    if (activeCursoFilter !== 'all') {
+      const itemCurso = (item.curso || 'ATPL').toUpperCase();
+      if (itemCurso !== activeCursoFilter.toUpperCase()) {
+        return false;
+      }
+    }
     // Filtro de asignatura
     if (activeAsigFilter !== 'all' && item.asignatura !== activeAsigFilter) {
       return false;
@@ -287,9 +814,10 @@ function renderExams() {
       const matchId = item.id.toLowerCase().includes(q);
       const matchAlumno = (item.alumno || '').toLowerCase().includes(q);
       const matchAsig = (item.asignatura || '').toLowerCase().includes(q);
+      const matchCurso = (item.curso || '').toLowerCase().includes(q);
       const matchNum = qNum.length > 0 && rawNum === qNum;
       const matchFinal = (item.nombre_final || '').toLowerCase().includes(q);
-      if (!matchId && !matchAlumno && !matchAsig && !matchNum && !matchFinal) return false;
+      if (!matchId && !matchAlumno && !matchAsig && !matchCurso && !matchNum && !matchFinal) return false;
     }
     return true;
   });
@@ -330,6 +858,14 @@ function renderExams() {
             <span class="badge-status badge-sesion">
               📁 Sesión ${item.sesion || '1'}
             </span>
+            <span class="badge-status badge-curso">
+              🎓 ${item.curso || 'ATPL'}
+            </span>
+            ${item.total_paginas && item.total_paginas > 1 ? `
+              <span class="badge-status" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); font-weight: 600;">
+                📑 ${item.total_paginas} págs
+              </span>
+            ` : ''}
             <span class="badge-status ${badgeClass}">${badgeText}</span>
             <a href="${pdfUrl}" target="_blank" class="btn btn-outline btn-sm" title="Abrir examen completo en nueva pestaña">
               📄 Ver PDF
@@ -350,15 +886,30 @@ function renderExams() {
               <input type="text" class="input-field field-alumno" data-field="alumno" value="${item.alumno || ''}" placeholder="Nombre y Apellidos" list="lista-alumnos" autocomplete="off">
             </div>
 
+            <div class="field-item">
+              <label>Curso</label>
+              <select class="input-field select-curso" data-field="curso" data-id="${item.id}" style="font-weight: 600;">
+                ${listaCursosMemoria.map(cu => `
+                  <option value="${cu.sigla}" ${(item.curso || 'ATPL') === cu.sigla ? 'selected' : ''}>
+                    ${cu.sigla}
+                  </option>
+                `).join('')}
+                ${item.curso && !listaCursosMemoria.some(c => c.sigla === item.curso) ? `<option value="${item.curso}" selected>${item.curso}</option>` : ''}
+                <option value="__add_new_curso__">➕ Añadir nuevo curso...</option>
+              </select>
+            </div>
+
             <div class="field-item" style="grid-column: span 1;">
               <label>Asignatura</label>
               <select class="input-field select-asig" data-field="asignatura" data-id="${item.id}" style="font-weight: 600;">
                 <option value="">-- Seleccionar --</option>
                 ${listaAsignaturasMemoria.map(as => `
                   <option value="${as.sigla}" data-cod="${as.codigo}" ${item.asignatura === as.sigla ? 'selected' : ''}>
-                    ${as.sigla} - ${as.codigo}
+                    ${as.sigla}${as.codigo ? ' - ' + as.codigo : (as.nombre ? ' (' + as.nombre + ')' : '')}
                   </option>
                 `).join('')}
+                ${item.asignatura && !listaAsignaturasMemoria.some(a => a.sigla === item.asignatura) ? `<option value="${item.asignatura}" selected>${item.asignatura}</option>` : ''}
+                <option value="__add_new_asig__">➕ Añadir nueva asignatura...</option>
               </select>
             </div>
 
@@ -382,6 +933,9 @@ function renderExams() {
               <button class="btn btn-success btn-sm btn-rename" onclick="renameSingle('${item.id}', this)">
                 💾 Renombrar
               </button>
+              <button class="btn btn-outline btn-sm" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.35); padding: 0.35rem 0.6rem;" onclick="deleteSingleExam('${item.id}', this)" title="Eliminar este examen y sus archivos">
+                🗑️
+              </button>
             </div>
           </div>
         </div>
@@ -399,17 +953,23 @@ function renderExams() {
       if (e.key === 'Enter') {
         e.preventDefault();
         const card = e.target.closest('.exam-card');
-        const renameBtn = card.querySelector('.btn-rename');
+        const renameBtn = card ? card.querySelector('.btn-rename') : null;
         if (renameBtn) renameBtn.click();
-        
-        // Avanzar automáticamente a la siguiente tarjeta
-        const nextCard = card.nextElementSibling;
-        if (nextCard && nextCard.classList.contains('exam-card')) {
-          const nextAlumno = nextCard.querySelector('.field-alumno');
-          if (nextAlumno) {
-            nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => nextAlumno.focus(), 150);
-          }
+      }
+    });
+  });
+
+  // Validar y detectar erratas/nuevos alumnos al cambiar el campo Alumno
+  document.querySelectorAll('.field-alumno').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const card = e.target.closest('.exam-card');
+      const id = card ? card.dataset.id : null;
+      const val = (e.target.value || '').trim();
+      if (val && val.toUpperCase() !== 'PENDIENTE' && val.length >= 3) {
+        const clean = quitarTildes(val.toUpperCase());
+        const isOfficial = listaAlumnosMemoria.some(a => quitarTildes(a.trim().toUpperCase()) === clean);
+        if (!isOfficial && !confirmedNewStudents.has(clean)) {
+          openConfirmAlumnoModal(clean, id, e.target);
         }
       }
     });
@@ -425,6 +985,18 @@ function handleFieldChange(e) {
 
   const item = examenes.find(x => x.id === id);
   if (!item) return;
+
+  if (field === 'curso' && value === '__add_new_curso__') {
+    e.target.value = item.curso || 'ATPL';
+    openCatalogoModal('cursos', e.target, item);
+    return;
+  }
+
+  if (field === 'asignatura' && value === '__add_new_asig__') {
+    e.target.value = item.asignatura || '';
+    openCatalogoModal('asigs', e.target, item);
+    return;
+  }
 
   if (field === 'alumno') {
     const cleanVal = quitarTildes(value.toUpperCase());
@@ -555,8 +1127,21 @@ async function renameSingle(id, btn) {
     return;
   }
 
+  // 2. Verificar si el alumno es oficial o si requiere confirmación (errata / nuevo alumno)
+  const cleanAlumno = quitarTildes((item.alumno || '').trim().toUpperCase());
+  const isOfficial = listaAlumnosMemoria.some(a => quitarTildes(a.trim().toUpperCase()) === cleanAlumno);
+  if (!isOfficial && !confirmedNewStudents.has(cleanAlumno)) {
+    const card = document.querySelector(`.exam-card[data-id="${id}"]`);
+    const inputEl = card ? card.querySelector('.field-alumno') : null;
+    openConfirmAlumnoModal(cleanAlumno, id, inputEl, () => {
+      // Continuar renombrando automáticamente tras la confirmación
+      renameSingle(id, btn);
+    });
+    return;
+  }
+
   // Generar nombre final verificado (siempre en mayúsculas y sin tildes)
-  item.alumno = quitarTildes((item.alumno || '').trim().toUpperCase());
+  item.alumno = cleanAlumno;
   item.nombre_final = buildFinalName(item);
 
   if (btn) {
@@ -577,6 +1162,16 @@ async function renameSingle(id, btn) {
       updateStats();
       renderExams();
       if (result.errores?.length) alert(result.errores.map(entry => entry.error).join('\n'));
+
+      // Avanzar automáticamente al siguiente examen pendiente
+      const nextCard = document.querySelector(`.exam-card.status-pendiente, .exam-card.status-analizado`);
+      if (nextCard) {
+        nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const nextAlumno = nextCard.querySelector('.field-alumno');
+        if (nextAlumno) {
+          setTimeout(() => nextAlumno.focus(), 150);
+        }
+      }
     } else {
       alert(result.errores?.map(entry => entry.error).join('\n') || result.error || 'No se pudo renombrar el archivo.');
     }
@@ -703,6 +1298,85 @@ async function batchRenameAnalyzed() {
   }
 }
 
+// Eliminar completamente la sesión actualmente filtrada
+async function deleteCurrentFilteredSession() {
+  if (activeSessionFilter === 'all') {
+    alert('Por favor selecciona una sesión específica en el desplegable para eliminarla.');
+    return;
+  }
+
+  const sessionExams = examenes.filter(e => String(e.sesion || '1') === String(activeSessionFilter));
+  const count = sessionExams.length;
+
+  const conf = confirm(
+    `⚠️ ATENCIÓN: ¿Estás seguro de que deseas eliminar completamente la Sesión ${activeSessionFilter}?\n\n` +
+    `• Se borrarán ${count} exámenes de la lista.\n` +
+    `• Se eliminarán sus archivos PDF divididos y miniaturas de disco.\n` +
+    `• Si estaban renombrados, se eliminarán sus archivos de Examenes_Renombrados/${activeSessionFilter}/.\n\n` +
+    `¿Deseas continuar?`
+  );
+  if (!conf) return;
+
+  try {
+    const res = await fetch('/api/eliminar_sesion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sesion: activeSessionFilter })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      alert(`✓ Sesión ${activeSessionFilter} eliminada correctamente (${data.deleted_count} exámenes eliminados).`);
+      activeSessionFilter = 'all';
+      const btnDelSesion = document.getElementById('btn-delete-sesion');
+      if (btnDelSesion) btnDelSesion.style.display = 'none';
+      await loadExamenes();
+    } else {
+      alert('Error al eliminar sesión: ' + (data.error || 'Desconocido'));
+    }
+  } catch (err) {
+    alert('Error de conexión al eliminar sesión: ' + err.message);
+  }
+}
+
+// Eliminar un examen individual
+async function deleteSingleExam(id, btn) {
+  const conf = confirm(`¿Deseas eliminar el examen "${id}" y su archivo PDF?`);
+  if (!conf) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+  }
+
+  try {
+    const res = await fetch('/api/eliminar_examen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      examenes = examenes.filter(e => e.id !== id);
+      updateStats();
+      updateSesionFilterOptions();
+      updateFechaFilterOptions();
+      renderExams();
+    } else {
+      alert('Error al eliminar examen: ' + (data.error || 'Desconocido'));
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🗑️';
+      }
+    }
+  } catch (err) {
+    alert('Error de conexión al eliminar examen: ' + err.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🗑️';
+    }
+  }
+}
+
 // Modal de Zoom
 function openZoomModal(imgUrl, title) {
   modalImg.src = imgUrl;
@@ -786,6 +1460,9 @@ function closeUploadModal() {
   if (prog) prog.classList.add('hidden');
   const fileInput = document.getElementById('input-pdf-files');
   if (fileInput) fileInput.value = '';
+  if (catalogoContext.targetItem && String(catalogoContext.targetItem.id).startsWith('scan_')) {
+    catalogoContext = { tab: 'cursos', targetSelect: null, targetItem: null };
+  }
   const btnProcess = document.getElementById('btn-start-process-upload');
   if (btnProcess) {
     btnProcess.disabled = true;
@@ -808,7 +1485,10 @@ const MATERIAS_DETECTION_RULES = [
   { pattern: /(?:^|[^A-Za-z])(?:OPS|OPERATIONAL\s*PROCEDURES|PROCEDIMIENTOS)(?=[^A-Za-z]|$)/i, sigla: 'OPS', codigo: '070' },
   { pattern: /(?:^|[^A-Za-z])(?:POF|PRINCIPLES\s*OF\s*FLIGHT|PRINCIPIOS\s*DE\s*VUELO)(?=[^A-Za-z]|$)/i, sigla: 'POF', codigo: '081' },
   { pattern: /(?:^|[^A-Za-z])(?:COMM(?:UNICATIONS|UNICACIONES)?|COMUNICACI[OÓ]N)(?=[^A-Za-z]|$)/i, sigla: 'COMM', codigo: '090' },
-  { pattern: /(?:^|[^A-Za-z])(?:PPL)(?=[^A-Za-z]|$)/i, sigla: 'PPL', codigo: '100' }
+  { pattern: /(?:^|[^A-Za-z])(?:PPL)(?=[^A-Za-z]|$)/i, sigla: 'PPL', codigo: '100' },
+  { pattern: /(?:^|[^A-Za-z])(?:MEP|MULTI\s*ENGINE|MULTIMOTOR|DA[-_ ]?42)(?=[^A-Za-z]|$)/i, sigla: 'DA42', codigo: '' },
+  { pattern: /(?:^|[^A-Za-z])(?:DA[-_ ]?40)(?=[^A-Za-z]|$)/i, sigla: 'DA40', codigo: '' },
+  { pattern: /(?:^|[^A-Za-z])(?:CESSNA|C[-_ ]?172|C[-_ ]?152|C[-_ ]?150)(?=[^A-Za-z]|$)/i, sigla: 'CESSNA', codigo: '' }
 ];
 
 // Extracción inteligente de asignatura y número de examen del nombre de archivo si existen
@@ -853,18 +1533,34 @@ function handleAddUploadFiles(files) {
 
     const detected = detectDateFromFilename(file.name);
     const extra = detectSubjectAndExamFromFilename(file.name);
+    let defaultCurso = 'ATPL';
+    if (extra.asig === 'DA42' || extra.asig === 'MEP') defaultCurso = 'MEP';
+    else if (extra.asig === 'CESSNA') defaultCurso = 'CESSNA';
+    else if (extra.asig === 'DA40') defaultCurso = 'DA40';
+    else if (extra.asig === 'FI' || extra.asig === 'PPT') defaultCurso = 'FI';
+
+    let defaultPages = 1;
+    if (extra.asig === 'DA42' || extra.asig === 'MEP' || defaultCurso === 'MEP') defaultPages = 6;
+    else if (extra.asig === 'CESSNA' || defaultCurso === 'CESSNA') defaultPages = 9;
+    else if (defaultCurso === 'FI' || extra.asig === 'FI' || extra.asig === 'PPT') defaultPages = 7;
+
     const item = {
       id: 'scan_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       file: file,
       fecha: detected,
       isAuto: !!detected,
+      curso: defaultCurso,
       asignatura: extra.asig || '',
       codigo_easa: extra.cod || '',
       numero_examen: extra.numEx || '',
       isAsigAuto: extra.isAsigAuto,
       isExamAuto: extra.isExamAuto,
       thumbUrl: null,
-      loadingThumb: false
+      loadingThumb: false,
+      paginas_por_examen: defaultPages,
+      total_paginas: 0,
+      total_examenes_estimados: 0,
+      isPagesAuto: false
     };
     selectedScanFiles.push(item);
     newItems.push(item);
@@ -875,7 +1571,7 @@ function handleAddUploadFiles(files) {
   newItems.forEach(item => loadHeaderPreviewForFile(item));
 }
 
-// Extracción asíncrona de la cabecera de la 1ª página del PDF
+// Extracción asíncrona de la cabecera de la 1ª página del PDF y autodetección de páginas
 async function loadHeaderPreviewForFile(item) {
   if (item.thumbUrl || item.loadingThumb) return;
   item.loadingThumb = true;
@@ -883,7 +1579,8 @@ async function loadHeaderPreviewForFile(item) {
     const res = await fetch('/api/extraer_cabecera_preview', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/pdf'
+        'Content-Type': 'application/pdf',
+        'X-Filename': encodeURIComponent(item.file.name)
       },
       body: item.file
     });
@@ -893,20 +1590,29 @@ async function loadHeaderPreviewForFile(item) {
         item.thumbUrl = data.thumb;
         item.loadingThumb = false;
         
-        // Actualizar visualmente la miniatura en la tarjeta del archivo
-        const row = document.querySelector(`.upload-file-row[data-id="${item.id}"]`);
-        if (row) {
-          const thumbSlot = row.querySelector('.upload-file-thumb-slot');
-          if (thumbSlot) {
-            const escapedName = item.file.name.replace(/'/g, "\\'");
-            thumbSlot.innerHTML = `
-              <div class="upload-thumb-container" onclick="openZoomModal('${item.thumbUrl}', '${escapedName}')" title="🔍 Clic para ampliar cabecera de la 1ª página">
-                <img src="${item.thumbUrl}" alt="Cabecera pág 1" class="upload-thumb-img">
-                <span class="upload-thumb-zoom-hint">🔍 Clic para ampliar cabecera (Pág 1)</span>
-              </div>
-            `;
-          }
+        if (data.total_paginas) item.total_paginas = data.total_paginas;
+        if (data.paginas_en_blanco !== undefined) item.paginas_en_blanco = data.paginas_en_blanco;
+        if (data.paginas_utiles !== undefined) item.paginas_utiles = data.paginas_utiles;
+        if (data.paginas_por_examen) {
+          item.paginas_por_examen = data.paginas_por_examen;
+          item.isPagesAuto = (data.deteccion_metodo !== 'defecto');
         }
+        if (data.total_examenes_estimados) item.total_examenes_estimados = data.total_examenes_estimados;
+        
+        if (data.curso) {
+          item.curso = data.curso;
+        }
+        if (!item.asignatura && data.asignatura) {
+          item.asignatura = data.asignatura;
+          item.codigo_easa = data.codigo_easa || '';
+          item.isAsigAuto = true;
+        }
+        if (!item.numero_examen && data.numero_examen) {
+          item.numero_examen = data.numero_examen;
+          item.isExamAuto = true;
+        }
+
+        renderSelectedUploadFiles();
       }
     }
   } catch (err) {
@@ -942,6 +1648,11 @@ function renderSelectedUploadFiles() {
       : `<span class="date-status-tag warn">⚠️ Falta fecha (Asignar YYMMDD)</span>`;
 
     const escapedName = item.file.name.replace(/'/g, "\\'");
+    const isCustomPages = ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(item.paginas_por_examen);
+    const utiles = (item.paginas_en_blanco && item.paginas_en_blanco > 0) 
+      ? (item.paginas_utiles || (item.total_paginas - item.paginas_en_blanco)) 
+      : item.total_paginas;
+    const numExamenesCalc = utiles > 0 ? Math.ceil(utiles / (item.paginas_por_examen || 1)) : 0;
 
     return `
       <div class="upload-file-row" data-id="${item.id}">
@@ -964,7 +1675,7 @@ function renderSelectedUploadFiles() {
                </div>`
             : `<div class="upload-thumb-loading">
                  <span class="spinner" style="border-top-color: var(--primary);"></span> 
-                 <span>Extrayendo cabecera de la 1ª página para revisar materia y examen...</span>
+                 <span>Extrayendo cabecera y detectando estructura de páginas...</span>
                </div>`
           }
         </div>
@@ -984,17 +1695,34 @@ function renderSelectedUploadFiles() {
             </div>
           </div>
 
+          <!-- Curso fijo para todo este archivo -->
+          <div class="upload-control-item">
+            <label class="upload-control-label">🎓 Curso:</label>
+            <select class="input-field select-curso-scan" 
+                    title="Curso al que pertenecen los exámenes de este archivo">
+              ${listaCursosMemoria.map(cu => `
+                <option value="${cu.sigla}" ${(item.curso || 'ATPL') === cu.sigla ? 'selected' : ''}>
+                  ${cu.sigla}
+                </option>
+              `).join('')}
+              ${item.curso && !listaCursosMemoria.some(c => c.sigla === item.curso) ? `<option value="${item.curso}" selected>${item.curso}</option>` : ''}
+              <option value="__add_new_curso__">➕ Añadir nuevo curso...</option>
+            </select>
+          </div>
+
           <!-- Asignatura fija para todo este archivo (Opcional o detectada) -->
           <div class="upload-control-item">
             <label class="upload-control-label">📚 Asignatura:</label>
             <select class="input-field select-asig-scan ${item.asignatura ? 'asig-detected' : ''}" 
-                    title="${item.isAsigAuto ? '✓ Materia detectada del nombre: ' + item.asignatura : 'Asignatura fija para todas las hojas de este archivo (Opcional)'}">
+                    title="${item.isAsigAuto ? '✓ Materia detectada: ' + item.asignatura : 'Asignatura fija para todas las hojas de este archivo (Opcional)'}">
               <option value="">-- Materia (Opcional) --</option>
               ${listaAsignaturasMemoria.map(as => `
                 <option value="${as.sigla}" data-cod="${as.codigo}" ${item.asignatura === as.sigla ? 'selected' : ''}>
-                  ${as.sigla} (${as.codigo})
+                  ${as.sigla}${as.codigo ? ' (' + as.codigo + ')' : (as.nombre ? ' (' + as.nombre + ')' : '')}
                 </option>
               `).join('')}
+              ${item.asignatura && !listaAsignaturasMemoria.some(a => a.sigla === item.asignatura) ? `<option value="${item.asignatura}" selected>${item.asignatura}</option>` : ''}
+              <option value="__add_new_asig__">➕ Añadir nueva asignatura...</option>
             </select>
           </div>
 
@@ -1004,8 +1732,39 @@ function renderSelectedUploadFiles() {
             <input type="text" class="input-field input-num-scan ${item.numero_examen ? 'exam-detected' : ''}" 
                    value="${item.numero_examen || ''}" 
                    placeholder="Ej: 7" 
-                   title="${item.isExamAuto ? '✓ Nº Examen detectado del nombre: EX' + item.numero_examen : 'Número de examen fijo para todas las hojas (Opcional, ej: 7, 9, 11)'}" 
+                   title="${item.isExamAuto ? '✓ Nº Examen detectado: EX' + item.numero_examen : 'Número de examen fijo para todas las hojas (Opcional, ej: 7, 9, 11)'}" 
                    maxlength="4">
+          </div>
+
+          <!-- Hojas por examen (Multipágina) -->
+          <div class="upload-control-item upload-control-pages">
+            <label class="upload-control-label">📑 Hojas por examen:</label>
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+              <select class="input-field select-pages-scan ${item.paginas_por_examen > 1 ? 'pages-multi' : ''}" 
+                      title="Define cuántas hojas forman cada examen en este PDF">
+                <option value="1" ${item.paginas_por_examen === 1 ? 'selected' : ''}>1 hoja (Estándar)</option>
+                <option value="2" ${item.paginas_por_examen === 2 ? 'selected' : ''}>2 hojas</option>
+                <option value="3" ${item.paginas_por_examen === 3 ? 'selected' : ''}>3 hojas</option>
+                <option value="4" ${item.paginas_por_examen === 4 ? 'selected' : ''}>4 hojas</option>
+                <option value="5" ${item.paginas_por_examen === 5 ? 'selected' : ''}>5 hojas</option>
+                <option value="6" ${item.paginas_por_examen === 6 ? 'selected' : ''}>6 hojas (ej. MEP)</option>
+                <option value="7" ${item.paginas_por_examen === 7 ? 'selected' : ''}>7 hojas (ej. FI)</option>
+                <option value="8" ${item.paginas_por_examen === 8 ? 'selected' : ''}>8 hojas</option>
+                <option value="9" ${item.paginas_por_examen === 9 ? 'selected' : ''}>9 hojas (ej. CESSNA)</option>
+                <option value="custom" ${isCustomPages ? 'selected' : ''}>Personalizado...</option>
+              </select>
+              <input type="number" min="1" max="100" class="input-field input-pages-custom ${isCustomPages ? '' : 'hidden'}" 
+                     value="${item.paginas_por_examen}" style="width: 70px;" placeholder="Págs">
+              ${item.total_paginas > 0 ? `
+                <span class="pages-detected-badge ${item.paginas_por_examen > 1 ? 'badge-multi' : ''}">
+                  ${item.paginas_en_blanco && item.paginas_en_blanco > 0 
+                    ? `✨ ${numExamenesCalc} exámenes (${utiles} págs útiles · ${item.paginas_en_blanco} en blanco descartadas)` 
+                    : (item.paginas_por_examen > 1 
+                        ? `✨ ${numExamenesCalc} exámenes (${item.total_paginas} págs)` 
+                        : `${item.total_paginas} exámenes (1 pág/ex)`)}
+                </span>
+              ` : ''}
+            </div>
           </div>
         </div>
       </div>
@@ -1043,18 +1802,51 @@ function renderSelectedUploadFiles() {
       });
     }
 
+    const selectCurso = row.querySelector('.select-curso-scan');
+    if (selectCurso && item) {
+      selectCurso.addEventListener('change', (e) => {
+        if (e.target.value === '__add_new_curso__') {
+          e.target.value = item.curso || 'ATPL';
+          openCatalogoModal('cursos', selectCurso, item);
+          return;
+        }
+        item.curso = e.target.value;
+        if (item.curso === 'MEP' && item.paginas_por_examen === 1) {
+          item.paginas_por_examen = 6;
+        } else if (item.curso === 'CESSNA' && item.paginas_por_examen === 1) {
+          item.paginas_por_examen = 9;
+        } else if (item.curso === 'FI' && item.paginas_por_examen === 1) {
+          item.paginas_por_examen = 7;
+        }
+        renderSelectedUploadFiles();
+      });
+    }
+
     const selectAsig = row.querySelector('.select-asig-scan');
     if (selectAsig && item) {
       selectAsig.addEventListener('change', (e) => {
+        if (e.target.value === '__add_new_asig__') {
+          e.target.value = item.asignatura || '';
+          openCatalogoModal('asigs', selectAsig, item);
+          return;
+        }
         item.asignatura = e.target.value;
         const opt = e.target.selectedOptions ? e.target.selectedOptions[0] : null;
         item.codigo_easa = opt ? (opt.dataset.cod || '') : '';
         item.isAsigAuto = false;
+        if (item.asignatura === 'DA42' || item.asignatura === 'MEP') {
+          item.curso = 'MEP';
+          if (item.paginas_por_examen === 1) item.paginas_por_examen = 6;
+        } else if (item.asignatura === 'PPT' || item.asignatura === 'FI') {
+          item.curso = 'FI';
+          if (item.paginas_por_examen === 1) item.paginas_por_examen = 7;
+        }
         if (item.asignatura) {
           selectAsig.classList.add('asig-detected');
         } else {
           selectAsig.classList.remove('asig-detected');
         }
+        renderSelectedUploadFiles();
       });
     }
 
@@ -1068,6 +1860,37 @@ function renderSelectedUploadFiles() {
           inputNum.classList.add('exam-detected');
         } else {
           inputNum.classList.remove('exam-detected');
+        }
+      });
+    }
+
+    const selectPages = row.querySelector('.select-pages-scan');
+    const inputPagesCustom = row.querySelector('.input-pages-custom');
+    if (selectPages && item) {
+      selectPages.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val === 'custom') {
+          if (inputPagesCustom) inputPagesCustom.classList.remove('hidden');
+        } else {
+          if (inputPagesCustom) inputPagesCustom.classList.add('hidden');
+          item.paginas_por_examen = parseInt(val, 10) || 1;
+          item.isPagesAuto = false;
+          renderSelectedUploadFiles();
+        }
+      });
+    }
+
+    if (inputPagesCustom && item) {
+      inputPagesCustom.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (val && val > 0) {
+          item.paginas_por_examen = val;
+          item.isPagesAuto = false;
+          const badge = row.querySelector('.pages-detected-badge');
+          if (badge && item.total_paginas > 0) {
+            const totEx = Math.ceil(item.total_paginas / val);
+            badge.textContent = `✨ ${totEx} exámenes (${item.total_paginas} págs)`;
+          }
         }
       });
     }
@@ -1148,6 +1971,7 @@ async function processUploadScans() {
   }
 
   let totalPaginas = 0;
+  const okArchivos = [];
 
   for (let i = 0; i < selectedScanFiles.length; i++) {
     const item = selectedScanFiles[i];
@@ -1159,21 +1983,30 @@ async function processUploadScans() {
     }
 
     try {
+      const chkBlancas = document.getElementById('chk-descartar-blancas');
+      const descartarBlancasVal = (!chkBlancas || chkBlancas.checked) ? '1' : '0';
+
       const res = await fetch('/api/upload_scan', {
         method: 'POST',
         headers: {
           'X-Filename': encodeURIComponent(item.file.name),
           'X-Fecha': item.fecha,
           'X-Sesion': currentUploadSession,
+          'X-Curso': encodeURIComponent(item.curso || 'ATPL'),
           'X-Asignatura': encodeURIComponent(item.asignatura || ''),
           'X-Codigo-Easa': encodeURIComponent(item.codigo_easa || ''),
-          'X-Numero-Examen': encodeURIComponent(item.numero_examen || '')
+          'X-Numero-Examen': encodeURIComponent(item.numero_examen || ''),
+          'X-Paginas-Por-Examen': String(item.paginas_por_examen || 1),
+          'X-Descartar-Blancas': descartarBlancasVal
         },
         body: item.file
       });
       const data = await res.json();
       if (data.status === 'ok') {
-        totalPaginas += (data.paginas_generadas || 0);
+        totalPaginas += (data.examenes_generados || data.paginas_generadas || 0);
+        if (data.archivo_inicial_ok) {
+          okArchivos.push(data.archivo_inicial_ok);
+        }
       } else {
         alert(`Error al procesar ${item.file.name}: ${data.error || 'Error desconocido'}`);
       }
@@ -1184,11 +2017,19 @@ async function processUploadScans() {
 
   if (progressBar) progressBar.style.width = '100%';
   if (progressText) {
-    progressText.textContent = `¡Finalizado! Se han dividido ${totalPaginas} páginas con éxito en la Sesión #${currentUploadSession}.`;
+    progressText.textContent = `¡Finalizado! Se han generado ${totalPaginas} exámenes con éxito en la Sesión #${currentUploadSession}.`;
   }
 
   setTimeout(async () => {
-    alert(`🎉 ¡Convocatoria cargada con éxito!\n\nSe han procesado ${selectedScanFiles.length} archivo(s) escaneado(s) y se han generado ${totalPaginas} exámenes individuales.\n\n📁 Asignados a: Sesión #${currentUploadSession} (carpeta 'Examenes_Renombrados/${currentUploadSession}/')`);
+    let msg = `🎉 ¡Convocatoria cargada con éxito!\n\n` +
+      `Se han procesado ${selectedScanFiles.length} archivo(s) escaneado(s) y se han generado ${totalPaginas} exámenes individuales.\n\n` +
+      `📁 Asignados a: Sesión #${currentUploadSession} (carpeta 'Examenes_Renombrados/${currentUploadSession}/')`;
+    
+    if (okArchivos.length > 0) {
+      msg += `\n\n✅ Archivo(s) inicial(es) guardado(s) con 'OK' en Escaneos_Originales/:\n• ${okArchivos.join('\n• ')}`;
+    }
+
+    alert(msg);
     closeUploadModal();
     await loadExamenes();
   }, 600);
@@ -1202,10 +2043,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (selectFilterSesion) {
     selectFilterSesion.addEventListener('change', (e) => {
       activeSessionFilter = e.target.value;
+      const btnDelSesion = document.getElementById('btn-delete-sesion');
       if (activeSessionFilter !== 'all') {
         selectFilterSesion.classList.add('active-filter');
+        if (btnDelSesion) {
+          btnDelSesion.style.display = 'inline-flex';
+          btnDelSesion.textContent = `🗑️ Borrar Sesión ${activeSessionFilter}`;
+        }
       } else {
         selectFilterSesion.classList.remove('active-filter');
+        if (btnDelSesion) {
+          btnDelSesion.style.display = 'none';
+        }
       }
       renderExams();
     });
@@ -1234,6 +2083,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Filtro desplegable de Curso
+  if (selectFilterCurso) {
+    selectFilterCurso.addEventListener('change', (e) => {
+      activeCursoFilter = e.target.value;
+      if (activeCursoFilter !== 'all') {
+        selectFilterCurso.classList.add('active-filter');
+      } else {
+        selectFilterCurso.classList.remove('active-filter');
+      }
+      renderExams();
+    });
+  }
+
   // Filtro desplegable de Asignatura
   if (selectFilterAsig) {
     selectFilterAsig.addEventListener('change', (e) => {
@@ -1261,15 +2123,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Búsqueda
-  searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value.trim();
-    renderExams();
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      renderExams();
+    });
+  }
 
   // Acciones en bloque
-  btnBatchAnalyze.addEventListener('click', () => batchAnalyzeNext(5));
-  btnBatchRename.addEventListener('click', batchRenameAnalyzed);
-  btnCancelBatch.addEventListener('click', () => { isBatchRunning = false; });
+  if (btnBatchAnalyze) btnBatchAnalyze.addEventListener('click', () => batchAnalyzeNext(5));
+  if (btnBatchRename) btnBatchRename.addEventListener('click', batchRenameAnalyzed);
+  if (btnCancelBatch) btnCancelBatch.addEventListener('click', () => { isBatchRunning = false; });
 
   // Modal Alumnos
   const btnManageAlumnos = document.getElementById('btn-manage-alumnos');
@@ -1297,10 +2161,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Modal Zoom
-  modalCloseBtn.addEventListener('click', closeModal);
-  modalBackdrop.addEventListener('click', closeModal);
+  if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+  if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      // 0. Si el modal de confirmación de alumno está abierto, cerrarlo
+      const modalConfirmAl = document.getElementById('modal-confirm-alumno');
+      if (modalConfirmAl && !modalConfirmAl.classList.contains('hidden')) {
+        closeConfirmAlumnoModal(true);
+        return;
+      }
       // 1. Si el modal de zoom de cabeceras está abierto, cerrar únicamente el zoom
       if (!modalEl.classList.contains('hidden')) {
         closeModal();
@@ -1312,13 +2182,45 @@ document.addEventListener('DOMContentLoaded', () => {
         closeAlumnosModal();
         return;
       }
-      // 3. Si solo está el modal de carga de escaneos, cerrarlo
+      // 3. Si el modal de catálogo está abierto, cerrar catálogo
+      const modalCat = document.getElementById('modal-catalogo-container');
+      if (modalCat && !modalCat.classList.contains('hidden')) {
+        closeCatalogoModal();
+        return;
+      }
+      // 4. Si solo está el modal de carga de escaneos, cerrarlo
       const modalUpload = document.getElementById('modal-upload-container');
       if (modalUpload && !modalUpload.classList.contains('hidden')) {
         closeUploadModal();
       }
+    } else if (e.key === 'Enter') {
+      const modalConfirmAl = document.getElementById('modal-confirm-alumno');
+      if (modalConfirmAl && !modalConfirmAl.classList.contains('hidden')) {
+        e.preventDefault();
+        const btnSug = document.getElementById('btn-confirm-use-suggestion');
+        const btnNew = document.getElementById('btn-confirm-add-new');
+        if (btnSug && !btnSug.classList.contains('hidden')) {
+          btnSug.click();
+        } else if (btnNew) {
+          btnNew.click();
+        }
+      }
     }
   });
+
+  // Modal Confirmación Alumno (Errata / Nuevo Alumno)
+  const btnConfirmSug = document.getElementById('btn-confirm-use-suggestion');
+  if (btnConfirmSug) btnConfirmSug.addEventListener('click', handleConfirmUseSuggestion);
+
+  const btnConfirmNew = document.getElementById('btn-confirm-add-new');
+  if (btnConfirmNew) btnConfirmNew.addEventListener('click', handleConfirmAddNew);
+
+  const btnConfirmKeep = document.getElementById('btn-confirm-keep-only');
+  if (btnConfirmKeep) btnConfirmKeep.addEventListener('click', handleConfirmKeepOnly);
+
+  // Modal Catálogo Cursos & Materias
+  const btnManageCatalogo = document.getElementById('btn-manage-catalogo');
+  if (btnManageCatalogo) btnManageCatalogo.addEventListener('click', () => openCatalogoModal('cursos'));
 
   // Modal Carga de Escaneos
   const btnOpenUpload = document.getElementById('btn-open-upload');

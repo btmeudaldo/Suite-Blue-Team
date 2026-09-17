@@ -6,7 +6,7 @@
 - [x] RED: autoguardado por tarjeta, colisiones y copia fallida.
 - [x] GREEN: cola de guardado y operaciones seguras en Exámenes y ATL.
 - [x] Integrar mensajes de error y verificar preview con datos ficticios.
-- [ ] Commit aislado, push y registro de resultados.
+- [x] Commit aislado, push y registro de resultados (`060bdde`, rama `codex/fix-exam-responsive-batch`).
 
 ### Revisión de guardado seguro (17/09/2026)
 

@@ -6,7 +6,7 @@
 - [x] Verificar punto 4 y reproducir RED de corrupción/avisos.
 - [x] Implementar respaldo, recuperación y errores explícitos.
 - [x] Verificar pruebas, preview y recursos versionados.
-- [ ] Commit aislado y push.
+- [x] Commit aislado y push (`7f380b9`, rama `codex/fix-exam-responsive-batch`).
 
 ### Revisión de puntos 4 y 5 (17/09/2026)
 

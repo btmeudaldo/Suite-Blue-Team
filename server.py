@@ -1854,6 +1854,64 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": f"Error al renumerar: {str(e)}"}, status=500)
                 return
 
+        elif path == "/api/secuencia_atl/abrir_word":
+            try:
+                data = json.loads(body.decode("utf-8")) if body else {}
+                archivo = data.get("archivo", "")
+                folder = os.path.normpath(os.path.abspath(os.path.join(BASE_DIR, "Sequencia ATL")))
+                if not archivo or archivo == "TODOS":
+                    docxs = [f for f in os.listdir(folder) if f.endswith(".docx") and not f.startswith("~$") and not f.endswith(".bak")]
+                    archivo = docxs[0] if docxs else ""
+                target_file = os.path.join(folder, os.path.basename(archivo))
+                if not os.path.exists(target_file):
+                    self.send_json({"error": f"Archivo no encontrado: {archivo}"}, status=404)
+                    return
+                os.startfile(target_file)
+                self.send_json({"status": "ok", "ruta": target_file, "archivo": os.path.basename(target_file)})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/secuencia_atl/guardar_descargas":
+            try:
+                import shutil
+                data = json.loads(body.decode("utf-8")) if body else {}
+                archivo = data.get("archivo", "")
+                folder = os.path.normpath(os.path.abspath(os.path.join(BASE_DIR, "Sequencia ATL")))
+                
+                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                if not os.path.exists(downloads_dir):
+                    downloads_dir = os.path.join(os.path.expanduser("~"), "Descargas")
+                if not os.path.exists(downloads_dir):
+                    downloads_dir = folder
+
+                copiados = []
+                if archivo and archivo != "TODOS":
+                    target_file = os.path.join(folder, os.path.basename(archivo))
+                    if not os.path.exists(target_file):
+                        self.send_json({"error": f"Archivo no encontrado: {archivo}"}, status=404)
+                        return
+                    dest_file = os.path.join(downloads_dir, os.path.basename(target_file))
+                    shutil.copy2(target_file, dest_file)
+                    copiados.append(dest_file)
+                else:
+                    for f in os.listdir(folder):
+                        if f.endswith(".docx") and not f.startswith("~$") and not f.endswith(".bak"):
+                            src = os.path.join(folder, f)
+                            dst = os.path.join(downloads_dir, f)
+                            shutil.copy2(src, dst)
+                            copiados.append(dst)
+
+                self.send_json({
+                    "status": "ok",
+                    "carpeta": downloads_dir,
+                    "copiados": [os.path.basename(c) for c in copiados],
+                    "rutas": copiados
+                })
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
         elif path == "/api/secuencia_atl/abrir_carpeta":
             try:
                 import subprocess
@@ -1868,17 +1926,17 @@ class ExamHandler(BaseHTTPRequestHandler):
                 os.makedirs(folder, exist_ok=True)
 
                 abierto = False
-                target_file = os.path.join(folder, os.path.basename(archivo)) if archivo else None
+                target_file = os.path.join(folder, os.path.basename(archivo)) if archivo and archivo != "TODOS" else None
 
-                # 1. Si se especificó un archivo concreto y existe, abrir seleccionándolo
+                # 1. Si hay archivo específico, intentar seleccionarlo en Explorer
                 if target_file and os.path.exists(target_file):
                     try:
-                        subprocess.Popen(f'explorer.exe /select,"{target_file}"', shell=True)
+                        subprocess.Popen(["explorer.exe", f"/select,{target_file}"])
                         abierto = True
                     except Exception:
                         pass
 
-                # 2. Abrir carpeta mediante la API nativa de Windows Shell
+                # 2. Abrir carpeta con shell nativo de Windows (el más infalible)
                 if not abierto:
                     try:
                         os.startfile(folder)
@@ -1886,7 +1944,7 @@ class ExamHandler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
 
-                # 3. Fallback con comando explorer
+                # 3. Fallback con llamada directa a explorer
                 if not abierto:
                     try:
                         subprocess.Popen(["explorer.exe", folder])

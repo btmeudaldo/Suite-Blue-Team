@@ -108,13 +108,19 @@ function renderSecuenciaDocs() {
           </div>
         </div>
 
-        <div class="sec-card-actions">
-          <button class="btn-sec-action primary" onclick="event.stopPropagation(); prepararRenumerar('${doc.archivo}')">
-            ⚡ Configurar & Renumerar
+        <div class="sec-card-actions" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+          <button class="btn-sec-action primary" onclick="event.stopPropagation(); prepararRenumerar('${doc.archivo}')" title="Configurar secuencia para este talonario">
+            ⚡ Renumerar
           </button>
-          <a class="btn-sec-action download" href="/api/secuencia_atl/descargar?archivo=${encodeURIComponent(doc.archivo)}" title="Descargar Word actual" onclick="event.stopPropagation();">
-            📥 Descargar
-          </a>
+          <button class="btn-sec-action secondary" onclick="event.stopPropagation(); abrirWordSequencia('${doc.archivo}', this)" title="Abrir directamente en Microsoft Word" style="background:#1e40af; color:white; border:none; border-radius:4px; padding:6px 10px; cursor:pointer; font-size:0.82rem; font-weight:600;">
+            📝 Word
+          </button>
+          <button class="btn-sec-action secondary" onclick="event.stopPropagation(); abrirCarpetaSequencia(this, '${doc.archivo}')" title="Abrir carpeta de Windows y seleccionar este archivo" style="border-radius:4px; padding:6px 10px; cursor:pointer; font-size:0.82rem; font-weight:600;">
+            📂 Carpeta
+          </button>
+          <button class="btn-sec-action secondary" onclick="event.stopPropagation(); guardarEnDescargas('${doc.archivo}', this)" title="Guardar copia en carpeta Descargas" style="background:#047857; color:white; border:none; border-radius:4px; padding:6px 10px; cursor:pointer; font-size:0.82rem; font-weight:600;">
+            💾 Descargas
+          </button>
         </div>
       </div>
     `;
@@ -326,6 +332,91 @@ async function renumerarTodosLote() {
   }
 }
 
+async function abrirWordSequencia(archivo, btnElem) {
+  if (!archivo) {
+    const sel = document.getElementById('secuencia-select-file');
+    archivo = sel ? sel.value : '';
+  }
+  const originalText = btnElem ? btnElem.innerHTML : null;
+  if (btnElem) {
+    btnElem.innerHTML = '⏳ Abriendo Word...';
+    btnElem.disabled = true;
+  }
+  try {
+    const res = await fetch('/api/secuencia_atl/abrir_word', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archivo: archivo || '' })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      if (btnElem) {
+        btnElem.innerHTML = '✅ Abierto en Word';
+        setTimeout(() => {
+          btnElem.innerHTML = originalText;
+          btnElem.disabled = false;
+        }, 3000);
+      }
+      const rutaBox = document.getElementById('sec-ruta-aviso');
+      if (rutaBox) {
+        rutaBox.style.display = 'block';
+        rutaBox.innerHTML = `📝 <strong>Abierto en Microsoft Word:</strong> <code>${data.archivo}</code>`;
+      }
+    } else {
+      throw new Error(data.error || 'No se pudo abrir Microsoft Word');
+    }
+  } catch (e) {
+    alert("Error al abrir en Word: " + e.message + "\nAsegúrate de tener Microsoft Word instalado.");
+    if (btnElem && originalText) {
+      btnElem.innerHTML = originalText;
+      btnElem.disabled = false;
+    }
+  }
+}
+
+async function guardarEnDescargas(archivo, btnElem) {
+  if (!archivo) {
+    const sel = document.getElementById('secuencia-select-file');
+    archivo = sel ? sel.value : '';
+  }
+  const originalText = btnElem ? btnElem.innerHTML : null;
+  if (btnElem) {
+    btnElem.innerHTML = '⏳ Guardando...';
+    btnElem.disabled = true;
+  }
+  try {
+    const res = await fetch('/api/secuencia_atl/guardar_descargas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archivo: archivo || '' })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      if (btnElem) {
+        btnElem.innerHTML = '✅ Guardado en Descargas';
+        setTimeout(() => {
+          btnElem.innerHTML = originalText;
+          btnElem.disabled = false;
+        }, 3500);
+      }
+      const rutaBox = document.getElementById('sec-ruta-aviso');
+      if (rutaBox) {
+        rutaBox.style.display = 'block';
+        const nombres = (data.copiados || []).join(', ');
+        rutaBox.innerHTML = `💾 <strong>Copia guardada con éxito en tu carpeta de Descargas:</strong><br><code style="word-break:break-all;">${data.carpeta}</code><div style="margin-top:6px; font-size:0.82rem; color:#10b981;">📄 ${nombres}</div>`;
+      }
+    } else {
+      throw new Error(data.error || 'No se pudo guardar la copia');
+    }
+  } catch (e) {
+    alert("Error al guardar copia en Descargas: " + e.message);
+    if (btnElem && originalText) {
+      btnElem.innerHTML = originalText;
+      btnElem.disabled = false;
+    }
+  }
+}
+
 async function descargarDocumentoSecuencia(archivo, btnElem) {
   if (!archivo) {
     const sel = document.getElementById('secuencia-select-file');
@@ -450,14 +541,20 @@ function mostrarResultadoModal({ titulo, archivo, secuencia, paginas, descargaUr
 
   bodyHtml += `
     <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-      <button class="btn btn-primary" onclick="descargarDocumentoSecuencia('${archivo || ''}', this)" style="background: #2563eb; color: white; font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer; border: none;">
-        📥 Descargar Documento Modificado
+      <button class="btn btn-primary" onclick="abrirWordSequencia('${archivo || ''}', this)" style="background: #2563eb; color: white; font-weight: 600; padding: 9px 15px; border-radius: 6px; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px;">
+        📝 Abrir en Microsoft Word
       </button>
-      <button class="btn btn-secondary" onclick="abrirCarpetaSequencia(this, '${archivo || ''}')" style="font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer;">
+      <button class="btn btn-secondary" onclick="abrirCarpetaSequencia(this, '${archivo || ''}')" style="font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
         📂 Abrir Carpeta en Windows
       </button>
+      <button class="btn btn-secondary" onclick="guardarEnDescargas('${archivo || ''}', this)" style="background: #059669; color: white; font-weight: 600; padding: 9px 14px; border-radius: 6px; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px;">
+        💾 Guardar Copia en Descargas
+      </button>
+      <button class="btn btn-outline" onclick="descargarDocumentoSecuencia('${archivo || ''}', this)" style="font-size:0.83rem; padding: 7px 11px; border-radius: 6px; cursor: pointer; opacity: 0.85;" title="Para descargas desde navegador web">
+        📥 Descarga web
+      </button>
     </div>
-    <div id="sec-ruta-aviso" style="margin-top:10px; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:0.83rem; color:var(--text-secondary); display:none;"></div>
+    <div id="sec-ruta-aviso" style="margin-top:12px; padding:10px 14px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:6px; font-size:0.85rem; color:var(--text-secondary); display:none;"></div>
   `;
 
   if (bodyElem) bodyElem.innerHTML = bodyHtml;

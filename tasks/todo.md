@@ -1,5 +1,13 @@
 # Cabeceras y Renombrar Listos
 
+## Mejora actual: guardado seguro
+
+- [x] Leer código y definir alcance de los tres problemas autorizados.
+- [ ] RED: autoguardado por tarjeta, colisiones y copia fallida.
+- [ ] GREEN: cola de guardado y operaciones seguras en Exámenes y ATL.
+- [ ] Integrar mensajes de error y verificar preview con datos ficticios.
+- [ ] Commit aislado, push y registro de resultados.
+
 - [x] Diagnosticar causas y documentar requisitos y plan.
 - [x] Ejecutar regresiones RED de selección, respuesta parcial y responsive.
 - [x] Corregir el renombrado y el ajuste de campos.

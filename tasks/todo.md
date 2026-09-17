@@ -3,10 +3,21 @@
 ## Puntos 4 y 5: confirmación y recuperación
 
 - [x] Revisar renombrado individual y definir recuperación de JSON.
-- [ ] Verificar punto 4 y reproducir RED de corrupción/avisos.
-- [ ] Implementar respaldo, recuperación y errores explícitos.
-- [ ] Verificar pruebas, preview y recursos versionados.
+- [x] Verificar punto 4 y reproducir RED de corrupción/avisos.
+- [x] Implementar respaldo, recuperación y errores explícitos.
+- [x] Verificar pruebas, preview y recursos versionados.
 - [ ] Commit aislado y push.
+
+### Revisión de puntos 4 y 5 (17/09/2026)
+
+- Punto 4 ya corregido en la fase anterior: nuevas pruebas confirman ambos módulos con respuesta vacía, ID distinto, fallo HTTP y éxito confirmado. No se duplicó la implementación.
+- Punto 5: respaldo `.bak` del estado anterior válido, restauración automática y conservación del JSON dañado como `.corrupt-UUID`. Estos archivos locales se excluyen de Git.
+- Corrupción sin respaldo válido devuelve HTTP 503 JSON y bloquea escrituras y operaciones destructivas; los datos ya cargados en pantalla se conservan. Errores de permisos se distinguen de corrupción.
+- 29 pruebas Node y 21 Python correctas en workspace y contenido aislado para commit. Sintaxis JavaScript y compilación Python correctas. Sin acceso a estados ni PDFs reales durante pruebas.
+- Preview local verifica aviso de recuperación, aviso de bloqueo y conservación de tarjetas. Evidencias: `output/playwright/preview_screenshot-recovery-exams.png` y `preview_screenshot-recovery-blocked.png`.
+- Verificados por contenido los scripts versionados con `20260917-recovery`. CSS versionado también. IA continúa inactiva.
+- `npm run lint:fix` y `npm run format` intentados, no disponibles por ausencia de `package.json`.
+- Recuperar el respaldo puede retroceder la última edición; la interfaz lo advierte. Reiniciar la app carga el backend actualizado.
 
 ## Mejora actual: guardado seguro
 

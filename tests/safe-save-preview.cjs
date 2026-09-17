@@ -36,7 +36,7 @@ async (page) => {
   await page.screenshot({ path: 'output/playwright/preview_screenshot-safe-atl.png', fullPage: true });
   if (saved.length !== 4 || saved.some(record => record.item.fecha === '260917')) throw new Error(JSON.stringify(saved));
   const scripts = await page.evaluate(async () => {
-    const urls = [...document.scripts].map(script => script.src).filter(url => url.includes('safe-save'));
+    const urls = [...document.scripts].map(script => script.src).filter(url => /\/public\/(app|atl|shared\/item-autosave)\.js\?v=/.test(url));
     return Promise.all(urls.map(async url => ({ url, ok: (await fetch(url)).ok })));
   });
   if (scripts.length !== 3 || scripts.some(script => !script.ok)) throw new Error('Missing versioned resources');

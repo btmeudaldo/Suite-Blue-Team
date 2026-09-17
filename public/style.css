@@ -46,6 +46,20 @@ body {
   display: none !important;
 }
 
+.state-notice {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.state-notice[data-level="error"] {
+  border-color: var(--danger);
+}
+
 .app-layout {
   max-width: 1600px;
   margin: 0 auto;

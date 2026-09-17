@@ -60,8 +60,7 @@ function updateFlotaFilter() {
 // Cargar items de ATL desde el servidor
 async function loadAtlItems() {
   try {
-    const res = await fetch('/api/atl/items');
-    atlItems = await res.json();
+    atlItems = await loadStateItems('/api/atl/items', 'atl-state-notice');
     updateAtlStats();
     renderAtlCards();
     if (typeof updateNavBadges === 'function') {

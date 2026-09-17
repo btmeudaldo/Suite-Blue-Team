@@ -109,16 +109,101 @@ def extraer_materia_y_examen(filename):
 
 
 def load_state():
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    return load_state_with_recovery(STATE_FILE)
 
 def save_state(state):
-    save_json_atomic(STATE_FILE, state)
+    save_state_with_backup(STATE_FILE, state)
+
+
+def validate_state(state):
+    if not isinstance(state, dict):
+        raise ValueError("El estado debe contener un objeto de registros")
+    for identity, item in state.items():
+        if not isinstance(identity, str) or not isinstance(item, dict):
+            raise ValueError("El estado contiene un registro inválido")
+        if "id" in item and item["id"] != identity:
+            raise ValueError("El identificador de un registro no coincide con su clave")
+    return state
+
+
+def read_state_file(path):
+    with open(path, "r", encoding="utf-8") as stream:
+        return validate_state(json.load(stream))
+
+
+def state_storage_warnings():
+    return globals().setdefault("_STATE_STORAGE_WARNINGS", {})
+
+
+def load_state_with_recovery(path):
+    import shutil
+    import uuid
+    missing = False
+    try:
+        return read_state_file(path)
+    except FileNotFoundError:
+        missing = True
+    except (ValueError, UnicodeError):
+        pass
+    except OSError as error:
+        raise OSError(f"No se puede leer {os.path.basename(path)}. Revisa los permisos o el bloqueo del archivo: {error}") from error
+
+    try:
+        recovered = read_state_file(path + ".bak")
+    except FileNotFoundError as error:
+        if missing:
+            return {}
+        raise OSError(f"{os.path.basename(path)} está dañado y no existe un respaldo válido. Se bloqueó la escritura para conservar los datos; restaura una copia válida.") from error
+    except (ValueError, UnicodeError) as error:
+        raise OSError(f"No se puede recuperar {os.path.basename(path)}: el respaldo también está dañado. Se bloqueó la escritura; restaura una copia válida.") from error
+    except OSError as error:
+        raise OSError(f"No se puede leer el respaldo de {os.path.basename(path)}. Revisa sus permisos o bloqueo: {error}") from error
+
+    evidence = None
+    try:
+        if not missing:
+            evidence = path + ".corrupt-" + uuid.uuid4().hex
+            shutil.copyfile(path, evidence)
+        save_json_atomic(path, recovered)
+    except OSError as error:
+        raise OSError(f"No se pudo restaurar el respaldo de {os.path.basename(path)}. Se conserva el respaldo; revisa permisos y espacio disponible: {error}") from error
+    message = f"Se recuperó {os.path.basename(path)} desde el respaldo anterior. Revisa las últimas ediciones, porque podrían no estar incluidas."
+    if evidence:
+        message += f" El archivo dañado se conservó como {os.path.basename(evidence)}."
+    state_storage_warnings()[path] = message
+    return recovered
+
+
+def save_state_with_backup(path, state):
+    validate_state(state)
+    previous = load_state_with_recovery(path)
+    # Un principal dañado nunca debe sustituir al último respaldo válido.
+    backup = previous if os.path.exists(path) else state
+    save_json_atomic(path + ".bak", backup)
+    save_json_atomic(path, state)
+
+
+def state_errors_as_json(handler):
+    from functools import wraps
+
+    @wraps(handler)
+    def guarded(self):
+        try:
+            if handler.__name__ == "do_POST":
+                path = urllib.parse.urlparse(self.path).path
+                if path.startswith("/api/atl/"):
+                    load_atl_state()
+                elif path in {
+                    "/api/upload_scan", "/api/archivar_convocatoria",
+                    "/api/analizar_uno", "/api/guardar_edicion", "/api/renombrar",
+                    "/api/eliminar_sesion", "/api/eliminar_examen",
+                }:
+                    load_state()
+            return handler(self)
+        except OSError as error:
+            self.send_json({"status": "error", "error": str(error)}, status=503)
+
+    return guarded
 
 
 def save_json_atomic(path, state):
@@ -263,16 +348,10 @@ def save_atl_flota(flota):
         json.dump(flota, f, indent=2, ensure_ascii=False)
 
 def load_atl_state():
-    if os.path.exists(ATL_STATE_FILE):
-        try:
-            with open(ATL_STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    return load_state_with_recovery(ATL_STATE_FILE)
 
 def save_atl_state(state):
-    save_json_atomic(ATL_STATE_FILE, state)
+    save_state_with_backup(ATL_STATE_FILE, state)
 
 def formatear_nombre_atl(fecha, avion, log_numero):
     """
@@ -509,6 +588,12 @@ class ExamHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        path = urllib.parse.urlparse(self.path).path
+        state_path = STATE_FILE if path == "/api/examenes" else ATL_STATE_FILE if path == "/api/atl/items" else None
+        warning = state_storage_warnings().get(state_path)
+        if warning:
+            self.send_header("X-State-Warning", urllib.parse.quote(warning))
+            self.send_header("Access-Control-Expose-Headers", "X-State-Warning")
         self.end_headers()
         self.wfile.write(body)
 
@@ -519,6 +604,7 @@ class ExamHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
+    @state_errors_as_json
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -675,6 +761,7 @@ class ExamHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Ruta no encontrada")
 
+    @state_errors_as_json
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path

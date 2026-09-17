@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/public/style.css?v=20260916-responsive">
+  <link rel="stylesheet" href="/public/style.css?v=20260917-recovery">
 </head>
 <body>
   <div class="app-layout">
@@ -255,6 +255,7 @@
       <datalist id="lista-alumnos"></datalist>
 
       <!-- Contenedor Principal de Tarjetas de Examen -->
+      <p id="exam-state-notice" class="state-notice" role="status" hidden></p>
       <main class="main-content">
         <div id="exam-list" class="exam-list">
           <!-- Renderizado dinámicamente por app.js -->
@@ -342,6 +343,7 @@
       </nav>
 
       <!-- Grid de Tarjetas de ATL -->
+      <p id="atl-state-notice" class="state-notice" role="status" hidden></p>
       <main class="main-content">
         <div id="atl-list" class="atl-grid">
           <!-- Rellenado dinámicamente por atl.js -->
@@ -774,8 +776,9 @@
 
   <!-- Scripts de la Aplicación -->
   <script src="/public/shared/item-autosave.js?v=20260917-safe-save"></script>
-  <script src="/public/app.js?v=20260917-safe-save"></script>
-  <script src="/public/atl.js?v=20260917-safe-save"></script>
+  <script src="/public/shared/state-feedback.js?v=20260917-recovery"></script>
+  <script src="/public/app.js?v=20260917-recovery"></script>
+  <script src="/public/atl.js?v=20260917-recovery"></script>
   <script src="/public/secuencia.js"></script>
   <script src="/public/nav.js"></script>
 </body>

@@ -150,8 +150,7 @@ async function loadExamenes() {
     await loadAlumnos();
     await loadAsignaturas();
     updateAsignaturaFilterOptions();
-    const res = await fetch('/api/examenes');
-    examenes = await res.json();
+    examenes = await loadStateItems('/api/examenes', 'exam-state-notice');
     updateStats();
     updateSesionFilterOptions();
     updateFechaFilterOptions();

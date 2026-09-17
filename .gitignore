@@ -24,8 +24,10 @@ thumbnails_atl/
 # Archivos de datos de ejecución local y backups
 estado_examenes.json
 estado_atl.json
+estado_secuencia.json
 estado_examenes.json.corrupt-*
 estado_atl.json.corrupt-*
+estado_secuencia.json.corrupt-*
 *.bak
 
 # Archivos de imagen temporales y Excel locks

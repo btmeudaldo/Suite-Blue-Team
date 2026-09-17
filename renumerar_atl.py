@@ -10,9 +10,34 @@ import os
 import sys
 import glob
 import re
+import json
 import shutil
 import zipfile
+from datetime import datetime
 import xml.etree.ElementTree as ET
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SECUENCIA_STATE_FILE = os.path.join(BASE_DIR, "estado_secuencia.json")
+
+def cargar_estado_secuencias():
+    """Carga el registro histórico de últimas secuencias emitidas por aeronave."""
+    if os.path.exists(SECUENCIA_STATE_FILE):
+        try:
+            with open(SECUENCIA_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def guardar_estado_secuencias(estado):
+    """Guarda atómicamente el registro de secuencias en estado_secuencia.json."""
+    try:
+        tmp = SECUENCIA_STATE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(estado, f, indent=2, ensure_ascii=False)
+        shutil.move(tmp, SECUENCIA_STATE_FILE)
+    except Exception as e:
+        print(f"Aviso: Error al guardar estado_secuencia.json: {e}")
 
 # Importar utilidades de verificación técnica P/N y S/N
 try:
@@ -72,6 +97,24 @@ def extraer_info_documento(docx_path):
         if not prefix.endswith('-'):
             prefix += '-'
 
+    # Detectar último número emitido a partir de muestra_fin o del registro guardado
+    m_fin = re.search(r'(\d+)\s*$', last_sample)
+    ultimo_num_detectado = int(m_fin.group(1)) if m_fin else None
+
+    # Consultar si hay estado guardado en estado_secuencia.json
+    estado_guardado = cargar_estado_secuencias()
+    entry = estado_guardado.get(filename) or estado_guardado.get(aeronave) or {}
+    ultimo_num_guardado = entry.get("ultimo_numero")
+
+    if ultimo_num_guardado is not None and ultimo_num_detectado is not None:
+        ultimo_numero = max(ultimo_num_guardado, ultimo_num_detectado)
+    elif ultimo_num_guardado is not None:
+        ultimo_numero = ultimo_num_guardado
+    else:
+        ultimo_numero = ultimo_num_detectado
+
+    siguiente_sugerido = (ultimo_numero + 1) if ultimo_numero is not None else 1
+
     return {
         "archivo": filename,
         "ruta_completa": os.path.abspath(docx_path),
@@ -80,6 +123,8 @@ def extraer_info_documento(docx_path):
         "prefijo_detectado": prefix,
         "muestra_inicio": first_sample,
         "muestra_fin": last_sample,
+        "ultimo_numero": ultimo_numero,
+        "siguiente_sugerido": siguiente_sugerido,
         "tamano_bytes": os.path.getsize(docx_path),
         "fecha_modificacion": os.path.getmtime(docx_path)
     }
@@ -220,6 +265,30 @@ def renumerar_documento(docx_path, start_num=1, prefix=None, digits=4, backup=Tr
         except Exception:
             pass
 
+    ultimo_emitido = start_num + len(matches) - 1
+    siguiente_sugerido = ultimo_emitido + 1
+
+    # Guardar en estado_secuencia.json para sugerencia inmediata en próximas ediciones
+    try:
+        aeronave_match = re.match(r"^([A-Z]{3})", os.path.basename(target_path), re.IGNORECASE)
+        aeronave = f"EC-{aeronave_match.group(1).upper()}" if aeronave_match else os.path.basename(target_path).split('.')[0]
+        estado = cargar_estado_secuencias()
+        registro = {
+            "archivo": os.path.basename(target_path),
+            "aeronave": aeronave,
+            "ultimo_numero": ultimo_emitido,
+            "siguiente_sugerido": siguiente_sugerido,
+            "prefijo": prefix,
+            "digitos": digits,
+            "paginas": len(matches),
+            "fecha_actualizacion": datetime.now().isoformat()
+        }
+        estado[os.path.basename(target_path)] = registro
+        estado[aeronave] = registro
+        guardar_estado_secuencias(estado)
+    except Exception as e:
+        print(f"Aviso al guardar estado_secuencia.json: {e}")
+
     return {
         "status": "ok",
         "archivo": os.path.basename(target_path),
@@ -227,7 +296,9 @@ def renumerar_documento(docx_path, start_num=1, prefix=None, digits=4, backup=Tr
         "paginas_procesadas": len(matches),
         "prefijo": prefix,
         "inicio": start_num,
-        "fin": start_num + len(matches) - 1,
+        "fin": ultimo_emitido,
+        "ultimo_numero": ultimo_emitido,
+        "siguiente_sugerido": siguiente_sugerido,
         "secuencia": f"{primer_resultado} -> {ultimo_resultado}",
         "primer_registro": primer_resultado,
         "ultimo_registro": ultimo_resultado,

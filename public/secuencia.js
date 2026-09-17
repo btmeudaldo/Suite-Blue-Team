@@ -55,7 +55,8 @@ function updateSecuenciaSelect() {
   secuenciaDocs.forEach(doc => {
     const opt = document.createElement('option');
     opt.value = doc.archivo;
-    opt.textContent = `✈️ ${doc.aeronave} — ${doc.archivo} (${doc.total_paginas} págs)`;
+    const sigTxt = doc.siguiente_sugerido ? ` | Siguiente: ${doc.siguiente_sugerido}` : '';
+    opt.textContent = `✈️ ${doc.aeronave} — ${doc.archivo} (${doc.total_paginas} págs${sigTxt})`;
     selectFile.appendChild(opt);
   });
 
@@ -99,12 +100,18 @@ function renderSecuenciaDocs() {
         <div class="sec-card-body">
           <h4 class="sec-filename" title="${doc.archivo}">${doc.archivo}</h4>
           <div class="sec-meta-row">
-            <span class="sec-meta-label">Prefijo detectado:</span>
+            <span class="sec-meta-label">Prefijo:</span>
             <span class="sec-pref-val">${doc.prefijo_detectado}</span>
           </div>
           <div class="sec-meta-row">
-            <span class="sec-meta-label">Muestra inicial:</span>
-            <span class="sec-sample-val">${doc.muestra_inicio || 'N/A'}</span>
+            <span class="sec-meta-label">Último emitido:</span>
+            <span class="sec-sample-val" style="font-weight:600; color:var(--text-primary);">${doc.muestra_fin || 'N/A'}</span>
+          </div>
+          <div class="sec-meta-row" style="background:rgba(37,99,235,0.12); padding:5px 8px; border-radius:6px; margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span class="sec-meta-label" style="color:#60a5fa; font-weight:600; font-size:0.8rem;">Siguiente sugerido:</span>
+            <span class="badge-seq" style="background:#2563eb; color:white; font-size:0.82rem; font-weight:700; padding:2px 7px; border-radius:4px;">
+              ${doc.siguiente_sugerido ? `${doc.prefijo_detectado}${String(doc.siguiente_sugerido).padStart(4, '0')}` : 'N/A'}
+            </span>
           </div>
         </div>
 
@@ -140,10 +147,24 @@ function onSecuenciaFileChange(filename) {
 
   const prefijoInput = document.getElementById('secuencia-prefix');
   const inicioInput = document.getElementById('secuencia-start-num');
+  const hintElem = document.getElementById('secuencia-start-hint');
 
   if (documentoSeleccionado) {
     if (prefijoInput) {
       prefijoInput.value = documentoSeleccionado.prefijo_detectado || 'LOG H-';
+    }
+    // Rellenar sugerencia automática editable del siguiente número
+    if (inicioInput && documentoSeleccionado.siguiente_sugerido !== undefined) {
+      inicioInput.value = documentoSeleccionado.siguiente_sugerido;
+    }
+    if (hintElem) {
+      if (documentoSeleccionado.ultimo_numero) {
+        hintElem.innerHTML = `💡 <strong>Sugerencia automática:</strong> El último número emitido fue <code>${documentoSeleccionado.ultimo_numero}</code> (${documentoSeleccionado.muestra_fin}). Rellenado automáticamente con <strong>${documentoSeleccionado.siguiente_sugerido}</strong>. Puedes modificarlo libremente.`;
+        hintElem.style.color = '#38bdf8';
+      } else {
+        hintElem.innerHTML = `Introduce 1 para empezar en 0001 (o cualquier número como 101, 1101, etc.)`;
+        hintElem.style.color = '';
+      }
     }
   }
 
@@ -268,6 +289,8 @@ async function ejecutarRenumeracion() {
       archivo: r.archivo,
       secuencia: r.secuencia,
       paginas: r.paginas_procesadas,
+      siguienteSugerido: r.siguiente_sugerido,
+      ultimoNumero: r.ultimo_numero,
       descargaUrl: `/api/secuencia_atl/descargar?archivo=${encodeURIComponent(r.archivo)}`,
       aviso: r.aviso
     });
@@ -511,7 +534,7 @@ async function abrirCarpetaSequencia(btnElem, archivo = '') {
   }
 }
 
-function mostrarResultadoModal({ titulo, archivo, secuencia, paginas, descargaUrl, contenidoExtra, aviso }) {
+function mostrarResultadoModal({ titulo, archivo, secuencia, paginas, siguienteSugerido, ultimoNumero, descargaUrl, contenidoExtra, aviso }) {
   const modalOverlay = document.getElementById('secuencia-modal');
   if (!modalOverlay) return;
 
@@ -533,6 +556,10 @@ function mostrarResultadoModal({ titulo, archivo, secuencia, paginas, descargaUr
         <p><strong>Documento:</strong> ${archivo}</p>
         ${secuencia ? `<p><strong>Nueva Secuencia:</strong> <span class="badge-seq">${secuencia}</span></p>` : ''}
         ${paginas ? `<p><strong>Páginas modificadas:</strong> ${paginas} páginas</p>` : ''}
+        ${siguienteSugerido ? `
+          <div style="margin-top:8px; padding:7px 10px; background:rgba(37,99,235,0.15); border:1px solid rgba(37,99,235,0.3); border-radius:6px; font-size:0.86rem; color:#93c5fd;">
+            💾 <strong>Siguiente número guardado:</strong> La próxima vez que proceses este talonario saldrá sugerido automáticamente con <strong>${siguienteSugerido}</strong> (modificable).
+          </div>` : ''}
       </div>`;
   }
   if (contenidoExtra) {

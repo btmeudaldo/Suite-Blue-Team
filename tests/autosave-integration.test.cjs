@@ -38,4 +38,24 @@ for (const module of ['exam', 'atl']) {
     await app.tick();
     assert.deepEqual(app.sent.map(call => call.item.id).sort(), ['A', 'B']);
   });
+
+  test(`${module}: rename waits for pending edits and displays destination conflicts`, async () => {
+    const app = setup(module === 'exam' ? 'public/app.js' : 'public/atl.js');
+    const requests = [], alerts = [];
+    app.context.alert = message => alerts.push(message);
+    app.context.fetch = async (url) => {
+      requests.push(url);
+      return { ok: true, json: async () => url.includes('renombrar')
+        ? { status: 'ok', renombrados: [], errores: [{ id: 'A', error: 'El destino ya existe' }] }
+        : { status: 'ok' } };
+    };
+    vm.runInContext(module === 'exam'
+      ? "examenes=[{id:'A',fecha:'260917',alumno:'TEST STUDENT',asignatura:'MET',numero_examen:'1',estado:'pendiente'}];listaAlumnosMemoria=['TEST STUDENT'];updateStats=()=>{};renderExams=()=>{};saveItemEdit(examenes[0]);"
+      : "atlItems=[{id:'A',fecha:'260917',avion:'TEST',log_numero:'1',estado:'pendiente'}];updateAtlStats=()=>{};renderAtlCards=()=>{};onAtlInputChange('A','fecha','260918');", app.context);
+    await vm.runInContext(module === 'exam' ? "renameSingle('A',null)" : "renameSingleAtl('A')", app.context);
+    assert.deepEqual(requests, module === 'exam'
+      ? ['/api/guardar_edicion', '/api/renombrar'] : ['/api/atl/guardar', '/api/atl/renombrar']);
+    assert.equal(vm.runInContext(module === 'exam' ? 'examenes[0].estado' : 'atlItems[0].estado', app.context), 'pendiente');
+    assert.match(alerts.at(-1), /destino ya existe/);
+  });
 }

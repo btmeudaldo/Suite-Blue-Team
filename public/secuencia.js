@@ -701,14 +701,14 @@ function renderModalVerificacionIndividual(data) {
     const celOk = comps.celula.sn_ok;
     extraHtml += `
       <tr style="background:${celOk ? 'rgba(255,255,255,0.02)' : 'rgba(239,68,68,0.08)'}; border-bottom:1px solid rgba(255,255,255,0.05);">
-        <td style="padding:6px 8px; font-weight:600;">Célula (Airframe)</td>
+        <td style="padding:6px 8px; font-weight:600;">Célula / Airframe (MSN)</td>
         <td style="padding:6px 8px; color:var(--text-secondary);">—</td>
         <td style="padding:6px 8px; color:var(--text-secondary);">—</td>
         <td style="padding:6px 8px;">
           <code style="color:${celOk ? 'var(--text-primary)' : '#ef4444'}; font-weight:${celOk ? 'normal' : 'bold'};">${comps.celula.sn_encontrado || 'No detectado'}</code>
         </td>
-        <td style="padding:6px 8px; color:var(--text-secondary);">
-          <code>${comps.celula.sn_esperado || 'N/A'}</code>
+        <td style="padding:6px 8px;">
+          <code style="color:#38bdf8; font-weight:600;">${comps.celula.sn_esperado || 'N/A'}</code>
         </td>
         <td style="padding:6px 8px; text-align:center; font-size:1.05rem;">
           ${celOk ? '✅' : '❌'}
@@ -730,9 +730,6 @@ function renderModalVerificacionIndividual(data) {
           <div>• <strong>Bomba Alimentación:</strong> P/N <code>05-7312-K017703</code> (S/N <code>13595</code>)</div>
           <div>• <strong>Reductora (Gearbox):</strong> P/N <code>05-7212-K041503</code> (S/N <code>4694</code>)</div>
         </div>
-        <p style="margin:8px 0 0 0; font-size:0.78rem; color:var(--text-secondary);">
-          ℹ️ <em>Nota de seguridad: La plantilla actual de Word no contiene celdas de accesorios. El documento no ha sido modificado.</em>
-        </p>
       </div>
     </div>
   `;
@@ -764,9 +761,10 @@ function renderModalVerificacionFlota(data) {
         <thead>
           <tr style="background:rgba(255,255,255,0.08); text-align:left;">
             <th style="padding:6px 8px;">Aeronave</th>
+            <th style="padding:6px 8px;">MSN Célula (Doc vs Oficial)</th>
             <th style="padding:6px 8px;">Documento</th>
-            <th style="padding:6px 8px; text-align:center;">Páginas</th>
-            <th style="padding:6px 8px; text-align:center;">Estado P/N y S/N</th>
+            <th style="padding:6px 8px; text-align:center;">Págs</th>
+            <th style="padding:6px 8px; text-align:center;">Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -774,11 +772,20 @@ function renderModalVerificacionFlota(data) {
 
   docs.forEach(d => {
     const ok = d.es_valido;
+    const cel = (d.detalles_componentes && d.detalles_componentes.celula) || {};
     extraHtml += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
         <td style="padding:6px 8px; font-weight:600;">
           <span class="sec-plane-badge">${d.aeronave}</span>
           ${(d.matricula_anterior || d.matricula_historica) ? `<br><small style="color:var(--text-secondary);">Ant: <strong>${d.matricula_anterior || d.matricula_historica}</strong></small>` : ''}
+        </td>
+        <td style="padding:6px 8px;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:0.82rem;">
+            <code>${cel.sn_encontrado || 'N/A'}</code>
+            <span style="color:var(--text-secondary);">vs</span>
+            <code style="color:#38bdf8; font-weight:600;">${cel.sn_esperado || 'N/A'}</code>
+            <span>${cel.sn_ok ? '✅' : '❌'}</span>
+          </div>
         </td>
         <td style="padding:6px 8px;"><small>${d.archivo}</small></td>
         <td style="padding:6px 8px; text-align:center;">${d.total_paginas}</td>

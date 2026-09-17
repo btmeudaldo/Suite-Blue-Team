@@ -26,13 +26,14 @@ W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 # TABLAS DE REFERENCIA TÉCNICA OFICIAL
 # ==============================================================================
 
-# Referencia de Motores y Hélices según la flota (Imagen 2)
+# Referencia de Motores y Hélices según la flota (Imagen 2) y MSN de Célula oficial
 # Mapea matrículas actuales y sus matrículas históricas (D-EKJJ -> EC-OXV, HA-KLB -> EC-OXT)
 TABLA_REFERENCIA_MOTORES_HELICES = {
     'EC-NNA': {
         'matricula': 'EC-NNA',
         'matricula_historica': None,
-        'sn_celula': '17269394',
+        'sn_celula': '172-69394',
+        'msn': '172-69394',
         'motor_lh': {'pn': 'TAE125-02-114', 'sn': '02-02-12981'},
         'motor_rh': {'pn': 'N/A', 'sn': 'N/A'},
         'helice_lh': {'pn': 'MTV-6-A/190-69', 'sn': '201176'},
@@ -42,6 +43,7 @@ TABLA_REFERENCIA_MOTORES_HELICES = {
         'matricula': 'EC-NNX',
         'matricula_historica': None,
         'sn_celula': 'F172-0132',
+        'msn': 'F172-0132',
         'motor_lh': {'pn': 'TAE125-02-114', 'sn': '02-02-12980'},
         'motor_rh': {'pn': 'N/A', 'sn': 'N/A'},
         'helice_lh': {'pn': 'MTV-6-A/190-69', 'sn': '251506'},
@@ -52,6 +54,7 @@ TABLA_REFERENCIA_MOTORES_HELICES = {
         'matricula_anterior': 'D-EKJJ',
         'matricula_historica': 'D-EKJJ',
         'sn_celula': 'F17200800',
+        'msn': 'F17200800',
         'motor_lh': {'pn': 'TAE125-02-99', 'sn': '02-02-06625'},
         'motor_rh': {'pn': 'N/A', 'sn': 'N/A'},
         'helice_lh': {'pn': 'MTV-6-A/187-129', 'sn': '5715'},
@@ -62,6 +65,7 @@ TABLA_REFERENCIA_MOTORES_HELICES = {
         'matricula_anterior': 'HA-KLB',
         'matricula_historica': 'HA-KLB',
         'sn_celula': 'F17201095',
+        'msn': 'F17201095',
         'motor_lh': {'pn': 'TAE125-02-99', 'sn': '02-02-04977'},
         'motor_rh': {'pn': 'N/A', 'sn': 'N/A'},
         'helice_lh': {'pn': 'MTV-6-A/187-129', 'sn': '3420'},
@@ -71,6 +75,7 @@ TABLA_REFERENCIA_MOTORES_HELICES = {
         'matricula': 'EC-OKC',
         'matricula_historica': None,
         'sn_celula': 'D4.205',
+        'msn': 'D4.205',
         'motor_lh': {'pn': 'TAE125-02-114', 'sn': '02-02-11584'},
         'motor_rh': {'pn': 'N/A', 'sn': 'N/A'},
         'helice_lh': {'pn': 'MTV-6-A/190-69', 'sn': '70516'},
@@ -79,7 +84,8 @@ TABLA_REFERENCIA_MOTORES_HELICES = {
     'EC-OMS': {
         'matricula': 'EC-OMS',
         'matricula_historica': None,
-        'sn_celula': '42.320',
+        'sn_celula': '42320',
+        'msn': '42320',
         'motor_lh': {'pn': 'TAE125-02-99', 'sn': '02-02-04791'},
         'motor_rh': {'pn': 'TAE125-02-99', 'sn': '02-02-04792'},
         'helice_lh': {'pn': 'MTV-6-A-C-F/CF187-129', 'sn': '71229'},
@@ -88,7 +94,8 @@ TABLA_REFERENCIA_MOTORES_HELICES = {
     'EC-OKM': {
         'matricula': 'EC-OKM',
         'matricula_historica': None,
-        'sn_celula': '42.296',
+        'sn_celula': '42296',
+        'msn': '42296',
         'motor_lh': {'pn': 'TAE125-02-114', 'sn': '02-02-10884'},
         'motor_rh': {'pn': 'TAE125-02-114', 'sn': '02-02-10885'},
         'helice_lh': {'pn': 'MTV-6-A-C-F/CF190-69', 'sn': '6716'},
@@ -148,10 +155,10 @@ def _normalizar_texto(txt):
 
 
 def normalizar_sn(sn):
-    """Elimina guiones, barras y espacios para comparación flexible de números de serie."""
+    """Elimina guiones, barras, puntos y espacios para comparación flexible de números de serie."""
     if not sn:
         return ""
-    return re.sub(r'[\s\-_/]', '', str(sn)).upper()
+    return re.sub(r'[\s\-_/.]', '', str(sn)).upper()
 
 
 def _coincide_sn(encontrado, esperado):
@@ -430,13 +437,15 @@ def verificar_atl_documento(docx_path):
             'sn_ok': _coincide_sn(datos_primera_pagina.get('helice_rh_sn', ''), ref_helice_rh['sn']),
         },
         'celula': {
-            'nombre': 'Célula / Airframe',
+            'nombre': 'Célula / Airframe (MSN)',
             'pn_esperado': 'N/A',
             'pn_encontrado': 'N/A',
             'pn_ok': True,
             'sn_esperado': ref_celula_sn if ref_celula_sn else 'N/A',
             'sn_encontrado': sn_celula_enc,
-            'sn_ok': celula_ok
+            'sn_ok': celula_ok,
+            'msn_esperado': ref_celula_sn if ref_celula_sn else 'N/A',
+            'msn_encontrado': sn_celula_enc
         }
     }
 

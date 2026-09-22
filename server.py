@@ -268,27 +268,28 @@ def rename_document_safely(state, item, source, destination, root, relative_name
     import shutil
     import tempfile
     identity = item["id"]
-    destination = os.path.normcase(os.path.abspath(destination))
+    destination_abs = os.path.abspath(destination)
+    destination_norm = os.path.normcase(destination_abs)
     previous = renamed_document_path(root, state.get(identity, {}))
     for other_id, other in state.items():
-        if other_id != identity and renamed_document_path(root, other) == destination:
+        if other_id != identity and renamed_document_path(root, other) == destination_norm:
             raise FileExistsError("El nombre de destino pertenece a otro documento")
-    if os.path.exists(destination) and previous != destination:
+    if os.path.exists(destination_abs) and previous != destination_norm:
         raise FileExistsError("Ya existe un archivo con ese nombre; cambia el nombre antes de renombrar")
     if not os.path.isfile(source):
         raise FileNotFoundError("No se encuentra el PDF original; se conserva la copia anterior")
 
-    os.makedirs(os.path.dirname(destination), exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=os.path.dirname(destination), prefix=".rename-") as staging:
+    os.makedirs(os.path.dirname(destination_abs), exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(destination_abs), prefix=".rename-") as staging:
         prepared = os.path.join(staging, "prepared.pdf")
         backup = os.path.join(staging, "previous.pdf")
         shutil.copy2(source, prepared)
         if not filecmp.cmp(source, prepared, shallow=False):
             raise OSError("La copia del PDF no coincide con el original")
-        existed = os.path.exists(destination)
+        existed = os.path.exists(destination_abs)
         if existed:
-            shutil.copy2(destination, backup)
-        os.replace(prepared, destination)
+            shutil.copy2(destination_abs, backup)
+        os.replace(prepared, destination_abs)
         updated = dict(item, estado="renombrado", archivo_en_disco=relative_name)
         proposed = dict(state)
         proposed[identity] = updated
@@ -296,14 +297,14 @@ def rename_document_safely(state, item, source, destination, root, relative_name
             save(proposed)
         except (OSError, TypeError, ValueError):
             if existed:
-                os.replace(backup, destination)
+                os.replace(backup, destination_abs)
             else:
-                os.remove(destination)
+                os.remove(destination_abs)
             raise
         state[identity] = updated
 
     # El estado persistido debe apuntar a la nueva copia antes de retirar la anterior.
-    if previous and previous != destination and os.path.isfile(previous):
+    if previous and previous != destination_norm and os.path.isfile(previous):
         shared = any(other_id != identity and renamed_document_path(root, other) == previous for other_id, other in state.items())
         if not shared:
             try:

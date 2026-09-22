@@ -176,6 +176,20 @@ class RenameTests(unittest.TestCase):
                     self.assertTrue(result["errores"])
                     self.assertEqual(self.ns[self.load_name]()["a.pdf"]["archivo_en_disco"], item["archivo_en_disco"])
 
+    def test_destination_preserves_uppercase_filename(self):
+        for atl in (False, True):
+            with self.subTest(atl=atl):
+                self.configure(atl)
+                upper_name = "260811.CARLOS MORALES FEBLES.Examen interno.FI.PPT.EXA.pdf"
+                item = self.item("upper.pdf", upper_name)
+                self.ns[self.save_name]({"upper.pdf": item})
+                (self.source / "upper.pdf").write_bytes(b"EXAM_DATA")
+                result = self.request([item])
+                self.assertEqual(len(result["renombrados"]), 1)
+                disk_files = [p.name for p in self.target.iterdir()]
+                self.assertIn(upper_name, disk_files)
+
 
 if __name__ == "__main__":
     unittest.main()
+

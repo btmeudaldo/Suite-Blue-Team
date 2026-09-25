@@ -93,5 +93,10 @@
     "sigla": "PPT",
     "codigo": "",
     "nombre": "Prueba de progreso teórica"
+  },
+  {
+    "sigla": "SMS",
+    "codigo": "",
+    "nombre": "SMS"
   }
 ]

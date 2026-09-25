@@ -12,33 +12,41 @@ function switchView(viewName) {
   const navBtnExamenes = document.getElementById('nav-btn-examenes');
   const navBtnAtl = document.getElementById('nav-btn-atl');
   const navBtnSecuencia = document.getElementById('nav-btn-secuencia');
+  const navBtnAuditor = document.getElementById('nav-btn-auditor');
 
   if (navBtnHub) navBtnHub.classList.toggle('active', viewName === 'hub');
   if (navBtnExamenes) navBtnExamenes.classList.toggle('active', viewName === 'examenes');
   if (navBtnAtl) navBtnAtl.classList.toggle('active', viewName === 'atl');
   if (navBtnSecuencia) navBtnSecuencia.classList.toggle('active', viewName === 'secuencia');
+  if (navBtnAuditor) navBtnAuditor.classList.toggle('active', viewName === 'auditor');
 
   // Alternar visibilidad de las vistas
   const viewHub = document.getElementById('view-hub');
   const viewExamenes = document.getElementById('view-examenes');
   const viewAtl = document.getElementById('view-atl');
   const viewSecuencia = document.getElementById('view-secuencia');
+  const viewAuditor = document.getElementById('view-auditor');
 
   if (viewHub) viewHub.classList.toggle('hidden', viewName !== 'hub');
   if (viewExamenes) viewExamenes.classList.toggle('hidden', viewName !== 'examenes');
   if (viewAtl) viewAtl.classList.toggle('hidden', viewName !== 'atl');
   if (viewSecuencia) viewSecuencia.classList.toggle('hidden', viewName !== 'secuencia');
+  if (viewAuditor) viewAuditor.classList.toggle('hidden', viewName !== 'auditor');
 
   // Guardar en sessionStorage para mantener la pestaña activa al recargar
   sessionStorage.setItem('blue_team_active_view', viewName);
 
-  // Si entra a ATL, Exámenes o Secuencia, forzar refresco de datos
+  // Si entra a ATL, Exámenes, Secuencia o Auditor, forzar refresco de datos
   if (viewName === 'atl' && typeof loadAtlItems === 'function') {
     loadAtlItems();
   } else if (viewName === 'examenes' && typeof loadExamenes === 'function') {
     loadExamenes();
   } else if (viewName === 'secuencia' && typeof loadSecuenciaDocs === 'function') {
     loadSecuenciaDocs();
+  } else if (viewName === 'auditor') {
+    if (typeof runAuditorScan === 'function' && (!auditorState || !auditorState.data)) {
+      runAuditorScan();
+    }
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });

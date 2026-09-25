@@ -41,6 +41,11 @@
           <span>Secuencias ATL</span>
           <span class="nav-badge nav-badge-secuencia" id="nav-badge-secuencia">7</span>
         </button>
+        <button class="nav-btn" id="nav-btn-auditor" onclick="switchView('auditor')">
+          <span class="nav-icon">🔍</span>
+          <span>Auditor de Nombres</span>
+          <span class="nav-badge nav-badge-auditor" id="nav-badge-auditor">0</span>
+        </button>
       </div>
     </header>
 
@@ -138,6 +143,35 @@
           </div>
           <button class="btn btn-warning hub-btn" type="button">
             <span>Abrir Secuencias</span>
+            <span>➔</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta 4: Auditor de Nombres de Vuelos -->
+        <div class="hub-card hub-card-auditor" onclick="switchView('auditor')">
+          <div class="hub-card-header">
+            <div class="hub-card-icon auditor-icon">🔍</div>
+            <div class="hub-card-badges">
+              <span class="badge-tech badge-local">100% Solo Lectura</span>
+              <span class="badge-tech">DOC GCTS & GCXO</span>
+            </div>
+          </div>
+          <h3 class="hub-card-title">Auditor de Nombres de Vuelos</h3>
+          <p class="hub-card-desc">
+            Inspección no destructiva de nomenclatura de vuelos (formato AAMMDD Matrícula Indicativos). Detección de erratas, orden invertido y espacios incorrectos con apertura directa en el Explorador de Windows.
+          </p>
+          <div class="hub-card-meta">
+            <div class="hub-meta-item">
+              <span class="meta-label">Carpetas clave:</span>
+              <span class="meta-val">GCTS / GCXO</span>
+            </div>
+            <div class="hub-meta-item">
+              <span class="meta-label">Incidencias:</span>
+              <span class="meta-val text-warning" id="hub-auditor-badge">--</span>
+            </div>
+          </div>
+          <button class="btn btn-info hub-btn" type="button">
+            <span>Abrir Auditor</span>
             <span>➔</span>
           </button>
         </div>
@@ -911,6 +945,136 @@
     </div>
   </section>
 
+  <!-- ========================================================= -->
+  <!-- VISTA 4: AUDITOR DE NOMBRES DE DOCUMENTACIÓN (100% READONLY) -->
+  <!-- ========================================================= -->
+  <section id="view-auditor" class="view-section hidden">
+    <!-- Encabezado de la Sección -->
+    <header class="app-header">
+      <div class="brand-area">
+        <div class="logo-badge" style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.4); color: #38bdf8;">🔍</div>
+        <div>
+          <h1 class="brand-title">Auditor de Nombres de Documentos</h1>
+          <p class="brand-subtitle">Inspección de nomenclatura de vuelos (AAMMDD Matrícula Indicativos) — 100% de solo lectura</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="abrirModalConfigAuditor()" title="Configurar formato y matrículas válidas de la flota">
+          <span>⚙️</span>
+          <span>Configuración</span>
+        </button>
+        <button class="btn btn-secondary" onclick="runAuditorScan()" title="Volver a escanear la carpeta actual">
+          <span>🔄</span>
+          <span>Re-auditar</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Banner de Seguridad Estricta -->
+    <div class="safety-banner">
+      <div class="safety-icon">🛡️</div>
+      <div class="safety-content">
+        <strong>Modo 100% Solo Lectura Activo</strong>
+        <span>Esta herramienta no borra, no renombra y no altera ningún archivo en disco. Te permite revisar incoherencias y pulsar en cualquier archivo para seleccionarlo directamente en el Explorador de Windows y renombrarlo tú mismo con total comodidad y seguridad.</span>
+      </div>
+    </div>
+
+    <!-- Barra de Configuración de Carpeta -->
+    <div class="auditor-controls-card">
+      <div class="auditor-presets-row">
+        <span class="auditor-label">Accesos directos:</span>
+        <button type="button" class="btn btn-secondary btn-sm preset-folder-btn active" id="btn-preset-gcts" onclick="selectPresetFolder('gcts')">
+          <span>📂</span> DOC GCTS (Tenerife Sur)
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm preset-folder-btn" id="btn-preset-gcxo" onclick="selectPresetFolder('gcxo')">
+          <span>📂</span> DOC GCXO (Tenerife Norte)
+        </button>
+      </div>
+
+      <div class="auditor-input-row">
+        <div class="auditor-input-wrapper">
+          <span class="input-icon">📁</span>
+          <input type="text" id="auditor-folder-input" class="auditor-folder-input" value="C:\Users\usuario\IONOS HiDrive\DOC GCTS" placeholder="Introduce la ruta completa de la carpeta a auditar...">
+        </div>
+        <button type="button" id="btn-auditor-scan" class="btn btn-primary" onclick="runAuditorScan()">
+          <span>🔍</span>
+          <span>Auditar Carpeta</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel de Métricas / KPI Cards -->
+    <div class="auditor-kpi-grid">
+      <div class="auditor-kpi-card" onclick="setAuditorFilter('all')">
+        <div class="kpi-icon">📊</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Total Archivos</span>
+          <span class="kpi-value" id="auditor-kpi-total">0</span>
+        </div>
+      </div>
+      <div class="auditor-kpi-card kpi-card-valid" onclick="setAuditorFilter('valid')">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Formato Conforme</span>
+          <span class="kpi-value text-success" id="auditor-kpi-valid">0</span>
+        </div>
+      </div>
+      <div class="auditor-kpi-card kpi-card-error" onclick="setAuditorFilter('errors')">
+        <div class="kpi-icon">❌</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Con Incidencias</span>
+          <span class="kpi-value text-danger" id="auditor-kpi-errors">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra de Filtros y Búsqueda -->
+    <div class="auditor-filter-bar">
+      <div class="auditor-tabs">
+        <button type="button" class="auditor-tab-btn active" data-filter="errors" onclick="setAuditorFilter('errors')">
+          <span>❌ Solo Incidencias</span>
+          <span class="tab-count-badge badge-danger" id="tab-errors-count">0</span>
+        </button>
+        <button type="button" class="auditor-tab-btn" data-filter="all" onclick="setAuditorFilter('all')">
+          <span>📁 Todos</span>
+          <span class="tab-count-badge" id="tab-all-count">0</span>
+        </button>
+        <button type="button" class="auditor-tab-btn" data-filter="valid" onclick="setAuditorFilter('valid')">
+          <span>✅ Conformes</span>
+          <span class="tab-count-badge badge-success" id="tab-valid-count">0</span>
+        </button>
+      </div>
+
+      <div class="auditor-search-wrapper">
+        <span class="search-icon">🔎</span>
+        <input type="text" id="auditor-search-input" class="auditor-search-input" placeholder="Buscar por nombre, matrícula o indicativo...">
+      </div>
+    </div>
+
+    <!-- Estado Vacío -->
+    <div id="auditor-empty-state" class="hidden"></div>
+
+    <!-- Tabla de Resultados -->
+    <div id="auditor-table-container" class="auditor-table-wrapper">
+      <table class="auditor-table">
+        <thead>
+          <tr>
+            <th style="width: 45px; text-align: center;">#</th>
+            <th style="width: 130px;">Estado</th>
+            <th>Nombre Actual en Disco</th>
+            <th>Diagnóstico / Incidencias</th>
+            <th style="width: 320px;">Nombre Sugerido</th>
+            <th style="width: 230px; text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="auditor-table-body">
+          <!-- Rellenado dinámicamente con JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- Modal de Resultados / Éxito -->
   <div id="secuencia-modal" class="modal hidden">
     <div class="modal-backdrop" onclick="cerrarModalSecuencia()"></div>
@@ -930,12 +1094,81 @@
     </div>
   </div>
 
+  <!-- Modal de Configuración del Auditor de Nombres -->
+  <div id="auditor-config-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="cerrarModalConfigAuditor()"></div>
+    <div class="modal-content" style="max-width: 680px; width: 95%;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+        <div>
+          <h3 id="auditor-config-title">⚙️ Configuración del Formato y Matrículas</h3>
+        </div>
+        <button class="modal-close-btn" onclick="cerrarModalConfigAuditor()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem; background: var(--bg-card); display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- Matrículas Válidas -->
+        <div class="form-group">
+          <label style="display: block; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-main);">
+            ✈️ Matrículas de la Flota (Aeronaves válidas)
+          </label>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            Introduce las matrículas permitidas separadas por comas, espacios o saltos de línea. Si un archivo tiene una errata leve (ej: <code>ECNXX</code>, <code>ENNA</code> o <code>EXNNX</code>), el sistema la detectará y sugerirá la matrícula correcta automáticamente.
+          </p>
+          <textarea id="cfg-auditor-matriculas" rows="3" class="form-input" style="font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; width: 100%; text-transform: uppercase;" placeholder="ECNNA, ECNNE, ECNME, ECNNX, ECOKM, ECOMS, ECOKC"></textarea>
+          <div id="cfg-matriculas-chips" style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem;">
+            <!-- Chips de matrículas generados con JS -->
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <!-- Prefijo Indicativo -->
+          <div class="form-group">
+            <label style="display: block; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-main);">
+              🏷️ Prefijo de Indicativo de Vuelo
+            </label>
+            <input type="text" id="cfg-auditor-prefijo" class="form-input" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase;" value="BTM">
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Estándar: BTM (Blue Team)</span>
+          </div>
+
+          <!-- Formato de Fecha -->
+          <div class="form-group">
+            <label style="display: block; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-main);">
+              📅 Formato de Fecha
+            </label>
+            <select id="cfg-auditor-fecha" class="form-input" style="font-weight: 600;">
+              <option value="AAMMDD">AAMMDD (6 dígitos continuos, ej: 260428)</option>
+              <option value="AA-MM-DD">AA-MM-DD (con guiones)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tolerancia a erratas -->
+        <div style="background: var(--bg-input); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.75rem;">
+          <input type="checkbox" id="cfg-auditor-autocorregir" checked style="width: 18px; height: 18px; cursor: pointer;">
+          <label for="cfg-auditor-autocorregir" style="font-size: 0.85rem; color: var(--text-main); cursor: pointer; user-select: none;">
+            <strong>Detección y corrección inteligente de erratas en matrículas</strong>
+            <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Avisa de erratas leves y sugiere la matrícula correcta correspondiente de la flota.</span>
+          </label>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.25rem; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-secondary btn-sm" onclick="restaurarConfigAuditorDefault()">↺ Valores por Defecto</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-secondary" onclick="cerrarModalConfigAuditor()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarConfigAuditor()">💾 Guardar y Re-auditar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts de la Aplicación -->
   <script src="/public/shared/item-autosave.js?v=20260917-safe-save"></script>
   <script src="/public/shared/state-feedback.js?v=20260917-recovery"></script>
   <script src="/public/app.js?v=20260917-recovery"></script>
   <script src="/public/atl.js?v=20260917-recovery"></script>
   <script src="/public/secuencia.js?v=20260917-desktop-native"></script>
+  <script src="/public/auditor.js?v=20260925-cfg-modal"></script>
   <script src="/public/nav.js"></script>
 </body>
 </html>

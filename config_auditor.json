@@ -1,0 +1,15 @@
+{
+  "matriculas": [
+    "ECNNA",
+    "ECNNE",
+    "ECNME",
+    "ECNNX",
+    "ECOKM",
+    "ECOMS",
+    "ECOKC"
+  ],
+  "prefijo_indicativo": "BTM",
+  "formato_fecha": "AAMMDD",
+  "extension_esperada": ".pdf",
+  "autocorregir_errata_matricula": true
+}

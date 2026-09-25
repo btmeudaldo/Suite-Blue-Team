@@ -964,7 +964,15 @@ class ExamHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
             self.end_headers()
             self.wfile.write(content)
+        elif path == "/api/auditor/config":
+            try:
+                import auditor_service
+                cfg = auditor_service.load_auditor_config()
+                self.send_json(cfg)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
             return
+
         else:
             self.send_error(404, "Ruta no encontrada")
 
@@ -1968,6 +1976,44 @@ class ExamHandler(BaseHTTPRequestHandler):
                 with open(target, "wb") as f:
                     f.write(body)
                 self.send_json({"status": "ok", "archivo": os.path.basename(filename)})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/auditor/scan":
+            try:
+                import auditor_service
+                data = json.loads(body.decode("utf-8")) if body and len(body) > 0 else {}
+                folder = data.get("folder", "").strip()
+                if not folder:
+                    self.send_json({"error": "Debe especificar una ruta de carpeta"}, status=400)
+                    return
+                result = auditor_service.scan_directory(folder)
+                self.send_json(result)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/auditor/abrir_archivo":
+            try:
+                import auditor_service
+                data = json.loads(body.decode("utf-8")) if body and len(body) > 0 else {}
+                file_path = data.get("file_path", "").strip()
+                if not file_path:
+                    self.send_json({"error": "Debe especificar una ruta de archivo"}, status=400)
+                    return
+                result = auditor_service.open_file_in_explorer(file_path)
+                self.send_json(result)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/auditor/config":
+            try:
+                import auditor_service
+                data = json.loads(body.decode("utf-8")) if body and len(body) > 0 else {}
+                cfg = auditor_service.save_auditor_config(data)
+                self.send_json({"status": "ok", "config": cfg})
             except Exception as e:
                 self.send_json({"error": str(e)}, status=500)
             return

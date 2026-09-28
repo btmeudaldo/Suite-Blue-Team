@@ -1,5 +1,7 @@
 import os
 import sys
+import shutil
+import re
 
 # Si se ejecuta mediante pythonw o sin consola, redirigir streams para evitar caídas en BaseHTTPRequestHandler
 if sys.stdout is None:
@@ -254,12 +256,67 @@ def save_json_atomic(path, state):
             os.remove(temporary)
 
 
+def quitar_tildes(texto):
+    if not texto:
+        return ""
+    trans = str.maketrans(
+        "ÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛáàäâéèëêíìïîóòöôúùüû",
+        "AAAAEEEEIIIIOOOOUUUUaaaaeeeeiiiioooouuuu"
+    )
+    return texto.translate(trans)
+
+
+def obtener_carpeta_alumno(nombre_alumno, nombre_archivo=""):
+    """Devuelve el nombre de la carpeta oficial del alumno con el formato:
+    {NOMBRE DEL ALUMNO EN MAYUSCULAS}.EXAMENES INTERNOS
+    """
+    import re
+    nombre = (nombre_alumno or "").strip()
+    if not nombre and nombre_archivo:
+        m = re.match(r'^\d{6}\.(.+?)\.Examen interno\.', os.path.basename(nombre_archivo), re.IGNORECASE)
+        if m:
+            nombre = m.group(1).strip()
+    nombre_limpio = quitar_tildes(" ".join(nombre.split()).upper())
+    if not nombre_limpio:
+        nombre_limpio = "PENDIENTE"
+    return f"{nombre_limpio}.EXAMENES INTERNOS"
+
+
+def obtener_subcarpeta_destino(item, final_name=""):
+    """Calcula la carpeta de destino en Examenes_Renombrados para un examen.
+    Estructura oficial: {ALUMNO EN MAYUSCULAS}.EXAMENES INTERNOS
+    Si no hay alumno y el nombre no sigue el estándar oficial (ej. tests sintéticos),
+    utiliza la sesión o PENDIENTE como fallback.
+    """
+    import re
+    alumno = (item.get("alumno") or "").strip() if isinstance(item, dict) else ""
+    if not alumno and final_name:
+        m = re.match(r'^\d{6}\.(.+?)\.Examen interno\.', os.path.basename(final_name), re.IGNORECASE)
+        if m:
+            alumno = m.group(1).strip()
+    if alumno:
+        return obtener_carpeta_alumno(alumno, final_name)
+    sesion = str(item.get("sesion") or "").strip() if isinstance(item, dict) else ""
+    if sesion:
+        return sesion
+    return "PENDIENTE.EXAMENES INTERNOS"
+
+
 def renamed_document_path(root, item):
     filename = item.get("archivo_en_disco")
     if not filename and item.get("estado") == "renombrado":
         filename = item.get("nombre_final")
-        if filename and item.get("sesion"):
-            filename = os.path.join(str(item["sesion"]), filename)
+        if filename:
+            sub = obtener_subcarpeta_destino(item, filename)
+            cand_alumno = os.path.join(root, sub, filename)
+            if os.path.exists(cand_alumno):
+                filename = os.path.join(sub, filename)
+            elif item.get("sesion") and os.path.exists(os.path.join(root, str(item["sesion"]), filename)):
+                filename = os.path.join(str(item["sesion"]), filename)
+            elif os.path.exists(os.path.join(root, filename)):
+                pass
+            else:
+                filename = os.path.join(sub, filename)
     return os.path.normcase(os.path.abspath(os.path.join(root, filename))) if filename else None
 
 
@@ -309,6 +366,13 @@ def rename_document_safely(state, item, source, destination, root, relative_name
         if not shared:
             try:
                 os.remove(previous)
+                prev_parent = os.path.dirname(previous)
+                root_norm = os.path.normcase(os.path.abspath(root))
+                if os.path.normcase(prev_parent) != root_norm and os.path.exists(prev_parent) and not os.listdir(prev_parent):
+                    try:
+                        os.rmdir(prev_parent)
+                    except OSError:
+                        pass
             except OSError as error:
                 return f"Renombrado; no se pudo retirar la copia anterior: {error}"
     return None
@@ -546,15 +610,6 @@ def detectar_curso(texto_completo, asig=""):
         return "ATPL"
 
     return "ATPL"
-
-def quitar_tildes(texto):
-    if not texto:
-        return ""
-    trans = str.maketrans(
-        "ÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛáàäâéèëêíìïîóòöôúùüû",
-        "AAAAEEEEIIIIOOOOUUUUAAAAEEEEIIIIOOOOUUUU"
-    )
-    return texto.translate(trans)
 
 def formatear_nombre_examen(fecha, alumno, tipo, arg1, arg2=None, arg3=None, arg4=None):
     """Genera el nombre estándar oficial del archivo de examen.
@@ -841,10 +896,17 @@ class ExamHandler(BaseHTTPRequestHandler):
             # 1. Probar ruta directa en Renombrados
             pdf_path = os.path.join(RENOMBRADOS_DIR, fname)
             
-            # 2. Si no existe directo, buscar en subcarpetas de sesiones (ej: 1/, 2/)
+            # 2. Si no existe directo, buscar en subcarpetas de alumnos o sesiones
             if not os.path.exists(pdf_path) or os.path.isdir(pdf_path):
                 found = False
-                if os.path.exists(RENOMBRADOS_DIR):
+                m = re.match(r'^\d{6}\.(.+?)\.Examen interno\.', base_fname, re.IGNORECASE)
+                if m:
+                    carp = obtener_carpeta_alumno(m.group(1), base_fname)
+                    cand = os.path.join(RENOMBRADOS_DIR, carp, base_fname)
+                    if os.path.exists(cand) and os.path.isfile(cand):
+                        pdf_path = cand
+                        found = True
+                if not found and os.path.exists(RENOMBRADOS_DIR):
                     for sub in os.listdir(RENOMBRADOS_DIR):
                         sub_dir = os.path.join(RENOMBRADOS_DIR, sub)
                         if os.path.isdir(sub_dir):
@@ -1125,10 +1187,6 @@ class ExamHandler(BaseHTTPRequestHandler):
 
             if not sesion or not sesion.isdigit():
                 sesion = get_next_session()
-
-            # Asegurar que exista la carpeta correspondiente a esta sesión
-            sesion_dir = os.path.join(RENOMBRADOS_DIR, sesion)
-            os.makedirs(sesion_dir, exist_ok=True)
 
             if not fecha or len(fecha) != 6 or not fecha.isdigit():
                 self.send_json({"error": "La fecha debe tener 6 dígitos (YYMMDD), por ejemplo: 260907"}, status=400)
@@ -1446,7 +1504,7 @@ class ExamHandler(BaseHTTPRequestHandler):
             self.send_json({"status": "ok"})
 
         elif path == "/api/renombrar":
-            # Renombrar físicamente dentro de la carpeta consecutiva de la sesión
+            # Renombrar físicamente dentro de la carpeta oficial del alumno: {ALUMNO}.EXAMENES INTERNOS
             items = req_data.get("items", [])
             state = load_state()
             renombrados = []
@@ -1468,14 +1526,16 @@ class ExamHandler(BaseHTTPRequestHandler):
                 if not sesion:
                     sesion = "1"
                 
-                sesion_dir = os.path.join(RENOMBRADOS_DIR, sesion)
+                subcarpeta = obtener_subcarpeta_destino(it, final_name)
+                dest_dir = os.path.join(RENOMBRADOS_DIR, subcarpeta)
                     
                 src_path = os.path.join(DIVIDIDOS_DIR, f_id)
-                dst_path = os.path.join(sesion_dir, final_name)
+                dst_path = os.path.join(dest_dir, final_name)
+                rel_name = f"{subcarpeta}/{final_name}"
                 
                 try:
-                    warning = rename_document_safely(state, dict(it, sesion=sesion), src_path, dst_path, RENOMBRADOS_DIR, f"{sesion}/{final_name}", save_state)
-                    renombrados.append({"id": f_id, "nombre_final": final_name, "sesion": sesion})
+                    warning = rename_document_safely(state, dict(it, sesion=sesion), src_path, dst_path, RENOMBRADOS_DIR, rel_name, save_state)
+                    renombrados.append({"id": f_id, "nombre_final": final_name, "sesion": sesion, "archivo_en_disco": rel_name})
                     if warning:
                         errores.append({"id": f_id, "error": warning})
                 except (OSError, TypeError, ValueError) as error:
@@ -1520,10 +1580,18 @@ class ExamHandler(BaseHTTPRequestHandler):
                 if ren_name:
                     p_ren = os.path.join(RENOMBRADOS_DIR, ren_name)
                     if not os.path.exists(p_ren):
-                        p_ren = os.path.join(RENOMBRADOS_DIR, sesion_target, os.path.basename(ren_name))
+                        sub = obtener_subcarpeta_destino(v, ren_name)
+                        p_cand = os.path.join(RENOMBRADOS_DIR, sub, os.path.basename(ren_name))
+                        if os.path.exists(p_cand):
+                            p_ren = p_cand
+                        else:
+                            p_ren = os.path.join(RENOMBRADOS_DIR, sesion_target, os.path.basename(ren_name))
                     if os.path.exists(p_ren):
                         try:
                             os.remove(p_ren)
+                            p_dir = os.path.dirname(p_ren)
+                            if os.path.normcase(os.path.abspath(p_dir)) != os.path.normcase(os.path.abspath(RENOMBRADOS_DIR)) and os.path.exists(p_dir) and not os.listdir(p_dir):
+                                os.rmdir(p_dir)
                         except Exception:
                             pass
             
@@ -1571,10 +1639,18 @@ class ExamHandler(BaseHTTPRequestHandler):
                 if ren_name:
                     p_ren = os.path.join(RENOMBRADOS_DIR, ren_name)
                     if not os.path.exists(p_ren):
-                        p_ren = os.path.join(RENOMBRADOS_DIR, sesion_id, os.path.basename(ren_name))
+                        sub = obtener_subcarpeta_destino(v, ren_name)
+                        p_cand = os.path.join(RENOMBRADOS_DIR, sub, os.path.basename(ren_name))
+                        if os.path.exists(p_cand):
+                            p_ren = p_cand
+                        else:
+                            p_ren = os.path.join(RENOMBRADOS_DIR, sesion_id, os.path.basename(ren_name))
                     if os.path.exists(p_ren):
                         try:
                             os.remove(p_ren)
+                            p_dir = os.path.dirname(p_ren)
+                            if os.path.normcase(os.path.abspath(p_dir)) != os.path.normcase(os.path.abspath(RENOMBRADOS_DIR)) and os.path.exists(p_dir) and not os.listdir(p_dir):
+                                os.rmdir(p_dir)
                         except Exception:
                             pass
                 
@@ -2018,6 +2094,14 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": str(e)}, status=500)
             return
 
+        elif path == "/api/migrar_carpetas_alumnos":
+            try:
+                migrados = migrar_examenes_a_carpetas_alumno()
+                self.send_json({"status": "ok", "migrados": migrados})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
         else:
             self.send_error(404)
 
@@ -2033,7 +2117,100 @@ class ExamHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
+def migrar_examenes_a_carpetas_alumno():
+    """Organiza cualquier examen PDF en Examenes_Renombrados (sueltos o en carpetas de sesión numéricas)
+    dentro de su carpeta {ALUMNO EN MAYUSCULAS}.EXAMENES INTERNOS y actualiza estado_examenes.json.
+    """
+    if not os.path.exists(RENOMBRADOS_DIR):
+        return 0
+
+    state = load_state()
+    state_modified = False
+    migrated_count = 0
+
+    state_by_exact = {}
+    state_by_norm = {}
+    for k, v in state.items():
+        if isinstance(v, dict):
+            nf = v.get("nombre_final") or ""
+            if nf:
+                state_by_exact[nf] = k
+                state_by_norm[nf.replace(".ATPL.", ".").replace("  ", " ")] = k
+
+    # 1. Archivos sueltos directamente en RENOMBRADOS_DIR
+    loose_files = [f for f in os.listdir(RENOMBRADOS_DIR) if f.lower().endswith(".pdf") and os.path.isfile(os.path.join(RENOMBRADOS_DIR, f))]
+    
+    # 2. Archivos en carpetas numéricas de sesión (ej: 1/, 2/)
+    session_files = []
+    for d in os.listdir(RENOMBRADOS_DIR):
+        dp = os.path.join(RENOMBRADOS_DIR, d)
+        if os.path.isdir(dp) and d.isdigit():
+            for sf in os.listdir(dp):
+                if sf.lower().endswith(".pdf") and os.path.isfile(os.path.join(dp, sf)):
+                    session_files.append((dp, sf))
+
+    for fname in loose_files:
+        src = os.path.join(RENOMBRADOS_DIR, fname)
+        carpeta = obtener_carpeta_alumno("", fname)
+        dst_dir = os.path.join(RENOMBRADOS_DIR, carpeta)
+        os.makedirs(dst_dir, exist_ok=True)
+        dst = os.path.join(dst_dir, fname)
+
+        try:
+            if os.path.abspath(src) != os.path.abspath(dst):
+                shutil.move(src, dst)
+            migrated_count += 1
+        except Exception as e:
+            print(f"Error moviendo {fname}: {e}")
+            continue
+
+        rel_path = f"{carpeta}/{fname}"
+        k = state_by_exact.get(fname) or state_by_norm.get(fname.replace(".ATPL.", ".").replace("  ", " "))
+        if k and k in state:
+            state[k]["archivo_en_disco"] = rel_path
+            state[k]["estado"] = "renombrado"
+            if not state[k].get("nombre_final"):
+                state[k]["nombre_final"] = fname
+            state_modified = True
+
+    for s_dir, fname in session_files:
+        src = os.path.join(s_dir, fname)
+        carpeta = obtener_carpeta_alumno("", fname)
+        dst_dir = os.path.join(RENOMBRADOS_DIR, carpeta)
+        os.makedirs(dst_dir, exist_ok=True)
+        dst = os.path.join(dst_dir, fname)
+
+        try:
+            if os.path.abspath(src) != os.path.abspath(dst):
+                shutil.move(src, dst)
+            migrated_count += 1
+            if os.path.exists(s_dir) and not os.listdir(s_dir):
+                try:
+                    os.rmdir(s_dir)
+                except OSError:
+                    pass
+        except Exception as e:
+            continue
+
+        rel_path = f"{carpeta}/{fname}"
+        k = state_by_exact.get(fname) or state_by_norm.get(fname.replace(".ATPL.", ".").replace("  ", " "))
+        if k and k in state:
+            state[k]["archivo_en_disco"] = rel_path
+            state[k]["estado"] = "renombrado"
+            if not state[k].get("nombre_final"):
+                state[k]["nombre_final"] = fname
+            state_modified = True
+
+    if state_modified:
+        try:
+            save_state(state)
+        except Exception:
+            pass
+
+    return migrated_count
+
 def run(port=8000):
+    migrar_examenes_a_carpetas_alumno()
     server = HTTPServer(("0.0.0.0", port), ExamHandler)
     print(f"Servidor iniciado en http://127.0.0.1:{port}")
     try:

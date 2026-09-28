@@ -181,13 +181,34 @@ class RenameTests(unittest.TestCase):
             with self.subTest(atl=atl):
                 self.configure(atl)
                 upper_name = "260811.CARLOS MORALES FEBLES.Examen interno.FI.PPT.EXA.pdf"
+                target_folder = self.target if atl else self.output / "CARLOS MORALES FEBLES.EXAMENES INTERNOS"
                 item = self.item("upper.pdf", upper_name)
                 self.ns[self.save_name]({"upper.pdf": item})
                 (self.source / "upper.pdf").write_bytes(b"EXAM_DATA")
                 result = self.request([item])
                 self.assertEqual(len(result["renombrados"]), 1)
-                disk_files = [p.name for p in self.target.iterdir()]
+                disk_files = [p.name for p in target_folder.iterdir()]
                 self.assertIn(upper_name, disk_files)
+
+    def test_exam_renamed_into_student_folder(self):
+        self.configure(atl=False)
+        student_name = "ABUSH DAVID DORTA"
+        exam_filename = f"260622.{student_name}.Examen interno.AGK.021.EX10.pdf"
+        item = {
+            "id": "exam_1.pdf",
+            "alumno": student_name,
+            "nombre_final": exam_filename,
+            "sesion": "1"
+        }
+        self.ns[self.save_name]({"exam_1.pdf": item})
+        (self.source / "exam_1.pdf").write_bytes(b"PDF_CONTENT")
+        result = self.request([item])
+        self.assertEqual(len(result["renombrados"]), 1)
+        expected_folder = self.output / f"{student_name}.EXAMENES INTERNOS"
+        self.assertTrue(expected_folder.exists(), "La carpeta del alumno debe existir")
+        self.assertTrue((expected_folder / exam_filename).exists(), "El examen debe estar dentro de la carpeta del alumno")
+        state = self.ns[self.load_name]()
+        self.assertEqual(state["exam_1.pdf"]["archivo_en_disco"], f"{student_name}.EXAMENES INTERNOS/{exam_filename}")
 
 
 if __name__ == "__main__":

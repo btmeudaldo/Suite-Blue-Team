@@ -25,8 +25,7 @@ Suite web modular de gestión documental para escuelas de aviación (Blue Team F
 ### 3. 📋 Gestor y Renombrador de Exámenes ATPL
 * Carga y división de exámenes tipo test multipágina.
 * Visor de cabeceras recortadas para lectura visual de alumnos y examen.
-* Autocompletado inteligente con lista de alumnos convocados y asignación de materias oficiales EASA.
-* Clasificación por subcarpetas de sesiones consecutivas (`Examenes_Renombrados/1/`, etc.).
+* Clasificación automática por carpetas de alumno en formato oficial (`Examenes_Renombrados/[ALUMNO].EXAMENES INTERNOS/`).
 
 ---
 

@@ -1285,11 +1285,17 @@ async function batchRenameAnalyzed() {
     }
     const renamedIds = new Set(data.renombrados.map(item => item.id));
     const renamed = ready.filter(item => renamedIds.has(item.id));
-    renamed.forEach(item => item.estado = 'renombrado');
+    renamed.forEach(item => {
+      item.estado = 'renombrado';
+      const serverRenamed = data.renombrados.find(r => r.id === item.id);
+      if (serverRenamed && serverRenamed.archivo_en_disco) {
+        item.archivo_en_disco = serverRenamed.archivo_en_disco;
+      }
+    });
     updateStats();
     renderExams();
     const details = (data.errores || []).map(entry => `${entry.id}: ${entry.error}`).join('\n');
-    alert(`Se han renombrado ${renamed.length} de ${ready.length} exámenes en 'Examenes_Renombrados/'.${details ? '\n' + details : ''}${renamed.length < ready.length ? '\nLos restantes no se han renombrado. Corrige los datos y vuelve a intentarlo.' : ''}`);
+    alert(`Se han clasificado y renombrado ${renamed.length} de ${ready.length} exámenes en sus carpetas por alumno 'Examenes_Renombrados/[ALUMNO].EXAMENES INTERNOS/'.${details ? '\n' + details : ''}${renamed.length < ready.length ? '\nLos restantes no se han renombrado. Corrige los datos y vuelve a intentarlo.' : ''}`);
   } catch (err) {
     alert('Error al renombrar lote: ' + err.message);
   } finally {
@@ -1312,7 +1318,7 @@ async function deleteCurrentFilteredSession() {
     `⚠️ ATENCIÓN: ¿Estás seguro de que deseas eliminar completamente la Sesión ${activeSessionFilter}?\n\n` +
     `• Se borrarán ${count} exámenes de la lista.\n` +
     `• Se eliminarán sus archivos PDF divididos y miniaturas de disco.\n` +
-    `• Si estaban renombrados, se eliminarán sus archivos de Examenes_Renombrados/${activeSessionFilter}/.\n\n` +
+    `• Si estaban renombrados, se eliminarán sus archivos de sus carpetas de alumno en Examenes_Renombrados/.\n\n` +
     `¿Deseas continuar?`
   );
   if (!conf) return;
@@ -1443,7 +1449,7 @@ async function openUploadModal() {
   const sessionBadge = document.getElementById('upload-session-badge');
   if (sessionBadge) sessionBadge.textContent = `Sesión #${currentUploadSession}`;
   const sessionFolder = document.getElementById('upload-session-folder');
-  if (sessionFolder) sessionFolder.textContent = `Examenes_Renombrados/${currentUploadSession}/`;
+  if (sessionFolder) sessionFolder.textContent = `Examenes_Renombrados/[ALUMNO].EXAMENES INTERNOS/`;
 
   if (modal) modal.classList.remove('hidden');
 }
@@ -2023,7 +2029,7 @@ async function processUploadScans() {
   setTimeout(async () => {
     let msg = `🎉 ¡Convocatoria cargada con éxito!\n\n` +
       `Se han procesado ${selectedScanFiles.length} archivo(s) escaneado(s) y se han generado ${totalPaginas} exámenes individuales.\n\n` +
-      `📁 Asignados a: Sesión #${currentUploadSession} (carpeta 'Examenes_Renombrados/${currentUploadSession}/')`;
+      `📁 Asignados a: Sesión #${currentUploadSession} (se clasificarán en 'Examenes_Renombrados/[ALUMNO].EXAMENES INTERNOS/')`;
     
     if (okArchivos.length > 0) {
       msg += `\n\n✅ Archivo(s) inicial(es) guardado(s) con 'OK' en Escaneos_Originales/:\n• ${okArchivos.join('\n• ')}`;

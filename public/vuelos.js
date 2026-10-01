@@ -2996,6 +2996,64 @@ function formatPilotosCell(f) {
   return pilots.join(' / ');
 }
 
+const PREDEFINED_CANCELLATION_REASONS = [
+  'Meteorología adversa',
+  'Avería mecánica / Mantenimiento',
+  'Indisposición del Alumno',
+  'Indisposición del Instructor',
+  'Operacional / Tráfico Aéreo / NOTAM',
+  'Reprogramación de Escuela',
+  'No presentado (No show)'
+];
+
+function formatFlightInfoCell(f) {
+  if (!f) return '';
+  const isCancelled = Boolean(f.isCancelled || f.status === 'CANCELLED');
+  let rawRoute = (f.route || '').trim();
+
+  let cleanRoute = rawRoute
+    .replace(/\(\s*n\/?a\s*\)/gi, '')
+    .replace(/\bn\/?a\b/gi, '')
+    .replace(/[()]/g, '')
+    .replace(/\s*->\s*/g, '-')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/^[-–—\s]+|[-–—\s]+$/g, '')
+    .trim();
+
+  // Si la ruta es N/A, (N/A), guión o 'Cancelado', no se considera ruta física válida
+  if (!cleanRoute || /^n\/?a$/i.test(cleanRoute) || /^\(n\/?a\)$/i.test(cleanRoute) || cleanRoute === '-' || cleanRoute === 'N/A-N/A' || /^cancelad[oa]$/i.test(cleanRoute)) {
+    cleanRoute = '';
+  }
+
+  if (!isCancelled) {
+    return cleanRoute || (rawRoute && !/^n\/?a$/i.test(rawRoute) ? rawRoute : '—');
+  }
+
+  // Para vuelos cancelados: obtener motivo de cancelación o comentarios
+  let rawReason = (f.cancellationReason || f.comments || '').trim();
+
+  // Eliminar cualquier 'N/A', '(N/A)' y cualquier paréntesis
+  let cleanReason = rawReason
+    .replace(/\(\s*n\/?a\s*\)/gi, '')
+    .replace(/\bn\/?a\b/gi, '')
+    .replace(/[()]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[-–—\s]+|[-–—\s]+$/g, '')
+    .trim();
+
+  if (!cleanReason || /^cancelad[oa]$/i.test(cleanReason)) {
+    cleanReason = 'Cancelado';
+  }
+
+  // Si hay una ruta previa válida y es distinta del motivo, mostrar "Ruta - Motivo" (sin paréntesis ni N/A)
+  if (cleanRoute && cleanRoute.toLowerCase() !== cleanReason.toLowerCase()) {
+    return `${cleanRoute} - ${cleanReason}`;
+  }
+
+  return cleanReason;
+}
+
 function formatDateToDdMmYyyy(date) {
   if (!date) {
     const now = new Date();
@@ -4210,8 +4268,19 @@ function openFlightEditModal(flightIndex) {
   const isCancelled = Boolean(flight?.isCancelled);
   document.getElementById('edit-is-cancelled').checked = isCancelled;
   const reasonInput = document.getElementById('edit-cancellation-reason');
+  const reasonSelect = document.getElementById('edit-cancellation-reason-select');
+  const currentReason = flight?.cancellationReason || (isCancelled ? (flight?.comments || '') : '');
   if (reasonInput) {
-    reasonInput.value = flight?.cancellationReason || (isCancelled ? (flight?.comments || '') : '');
+    reasonInput.value = currentReason;
+  }
+  if (reasonSelect) {
+    if (PREDEFINED_CANCELLATION_REASONS.includes(currentReason)) {
+      reasonSelect.value = currentReason;
+    } else if (currentReason) {
+      reasonSelect.value = 'Otro';
+    } else {
+      reasonSelect.value = '';
+    }
   }
   const reasonContainer = document.getElementById('edit-cancellation-reason-container');
   if (reasonContainer) {
@@ -4235,6 +4304,19 @@ function closeFlightEditModal() {
   currentEditingFlightIndex = -1;
 }
 
+function handleCancellationReasonSelect(val) {
+  const reasonInput = document.getElementById('edit-cancellation-reason');
+  if (!reasonInput) return;
+  if (!val || val === 'Otro') {
+    if (val === 'Otro' && (!reasonInput.value || PREDEFINED_CANCELLATION_REASONS.includes(reasonInput.value))) {
+      reasonInput.value = '';
+    }
+    reasonInput.focus();
+  } else {
+    reasonInput.value = val;
+  }
+}
+
 function handleCancelledToggle(checkbox) {
   const flownInput = document.getElementById('edit-flown-time');
   if (flownInput) {
@@ -4246,8 +4328,11 @@ function handleCancelledToggle(checkbox) {
   if (reasonContainer) {
     reasonContainer.style.display = checkbox.checked ? 'block' : 'none';
     if (checkbox.checked) {
+      const reasonSelect = document.getElementById('edit-cancellation-reason-select');
       const reasonInput = document.getElementById('edit-cancellation-reason');
-      if (reasonInput && !reasonInput.value) {
+      if (reasonSelect && !reasonSelect.value) {
+        reasonSelect.focus();
+      } else if (reasonInput && !reasonInput.value) {
         reasonInput.focus();
       }
     }
@@ -4267,7 +4352,7 @@ function saveFlightEditModal() {
   const flownStr = (document.getElementById('edit-flown-time').value || '').trim();
   const isCancelled = document.getElementById('edit-is-cancelled').checked;
   const cancellationReason = isCancelled
-    ? ((document.getElementById('edit-cancellation-reason')?.value || '').trim())
+    ? ((document.getElementById('edit-cancellation-reason')?.value || document.getElementById('edit-cancellation-reason-select')?.value || '').trim())
     : '';
   const lessons = (document.getElementById('edit-lessons').value || '').trim();
   let comments = (document.getElementById('edit-comments').value || '').trim();
@@ -4717,7 +4802,7 @@ async function exportVuelosExcel() {
 
   // Hoja 2: Detalle de Vuelos
   const wsVuelosData = [
-    ['Vuelo #', 'Matrícula', 'Alumno Cod', 'Alumno Nombre', 'Instructor Cod', 'Instructor Nombre', 'Ruta', 'Programado', 'Bloque', 'Desviación', 'Estado', 'Lección', 'Comentarios / Motivo']
+    ['Vuelo #', 'Matrícula', 'Alumno Cod', 'Alumno Nombre', 'Instructor Cod', 'Instructor Nombre', 'Información', 'Programado', 'Bloque', 'Desviación', 'Estado', 'Lección', 'Comentarios / Motivo']
   ];
   for (const f of vuelosState.matchedFlights) {
     wsVuelosData.push([
@@ -4727,13 +4812,13 @@ async function exportVuelosExcel() {
       f.studentName || '',
       f.instructorCode || '',
       f.instructorName || '',
-      f.route,
+      formatFlightInfoCell(f),
       f.scheduledHoursFormatted,
       f.isCancelled ? '—' : f.flownHoursFormatted,
       f.isCancelled ? '—' : f.deviationHoursFormatted,
       f.isCancelled ? 'CANCELADO' : f.status,
       f.lessons || '',
-      f.isCancelled ? (f.cancellationReason || f.comments || 'Cancelado') : (f.comments || '')
+      f.isCancelled ? formatFlightInfoCell(f) : (f.comments || '')
     ]);
   }
   const wsVuelos = XLSX.utils.aoa_to_sheet(wsVuelosData);
@@ -4754,7 +4839,7 @@ async function exportVuelosExcel() {
       c.instructorName || '',
       c.scheduledHoursFormatted,
       c.lessons || '',
-      c.cancellationReason || c.comments || 'Vuelo cancelado'
+      formatFlightInfoCell(c)
     ]);
   }
   const wsCancelados = XLSX.utils.aoa_to_sheet(wsCanceladosData);
@@ -4884,16 +4969,16 @@ async function exportVuelosPdf() {
     f.registration,
     (f.studentCode ? `[${f.studentCode}] ` : '') + (f.studentName || '—'),
     (f.instructorCode ? `[${f.instructorCode}] ` : '') + (f.instructorName || '—'),
-    f.route,
+    formatFlightInfoCell(f),
     f.scheduledHoursFormatted,
     f.isCancelled ? '—' : f.flownHoursFormatted,
     f.isCancelled ? '—' : f.deviationHoursFormatted,
-    f.isCancelled ? `CANCELADO${(f.cancellationReason || f.comments) ? ` (${f.cancellationReason || f.comments})` : ''}` : (f.status === 'ON_TIME' ? 'Puntual' : f.deviationHoursFormatted)
+    f.isCancelled ? 'CANCELADO' : (f.status === 'ON_TIME' ? 'Puntual' : f.deviationHoursFormatted)
   ]);
 
   doc.autoTable({
     startY: currentY,
-    head: [['Vuelo', 'Matr.', 'Alumno', 'Instructor', 'Ruta', 'Prog.', 'Bloque', 'Desv.', 'Estado']],
+    head: [['Vuelo', 'Matr.', 'Alumno', 'Instructor', 'Información', 'Prog.', 'Bloque', 'Desv.', 'Estado']],
     body: tableRows,
     theme: 'grid',
     headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold', halign: 'center' },
@@ -4901,7 +4986,7 @@ async function exportVuelosPdf() {
     columnStyles: {
       0: { fontStyle: 'bold', halign: 'center' },
       1: { halign: 'center' },
-      4: { halign: 'center' },
+      4: { halign: 'left' },
       5: { halign: 'center' },
       6: { halign: 'center' },
       7: { halign: 'center', fontStyle: 'bold' },
@@ -4937,7 +5022,7 @@ async function exportVuelosPdf() {
       (c.studentCode ? `[${c.studentCode}] ` : '') + (c.studentName || '—'),
       (c.instructorCode ? `[${c.instructorCode}] ` : '') + (c.instructorName || '—'),
       c.scheduledHoursFormatted,
-      c.cancellationReason || c.comments || 'Vuelo cancelado'
+      formatFlightInfoCell(c)
     ]);
 
     doc.autoTable({
@@ -5046,15 +5131,15 @@ function getDifferencesFlightsForExport() {
 
 function renderDifferencesTableToCanvas(items) {
   const colWidths = {
-    matricula: 95,
-    ruta: 175,
-    programado: 100,
-    bloque: 90,
+    matricula: 90,
+    ruta: 220,
+    programado: 95,
+    bloque: 85,
     diferencia: 95,
-    instructor: 145,
-    alumno: 150
+    instructor: 135,
+    alumno: 145
   };
-  const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0); // 850px
+  const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0); // 865px
   const headerHeight = 42;
   const rowHeight = 36;
   const totalLegs = items.reduce((sum, it) => sum + (it.isGroup ? it.flights.length : 1), 0);
@@ -5078,7 +5163,7 @@ function renderDifferencesTableToCanvas(items) {
 
   const cols = [
     { key: 'matricula', label: 'Matricula', width: colWidths.matricula, align: 'left' },
-    { key: 'ruta', label: 'Ruta', width: colWidths.ruta, align: 'left' },
+    { key: 'ruta', label: 'Información', width: colWidths.ruta, align: 'left' },
     { key: 'programado', label: 'Programado', width: colWidths.programado, align: 'center' },
     { key: 'bloque', label: 'Bloque', width: colWidths.bloque, align: 'center' },
     { key: 'diferencia', label: 'Diferencía', width: colWidths.diferencia, align: 'center' },
@@ -5143,12 +5228,18 @@ function renderDifferencesTableToCanvas(items) {
       ctx.textAlign = 'left';
       ctx.fillText(f.registration || '', colMap.matricula.x + 12, currentY + rowHeight / 2);
 
-      // Ruta
-      let routeText = (f.route || '').replace(/\s*->\s*/g, '-').replace(/\s+/g, ' ');
-      if (it.isCancelled && it.cancellationReason && it.cancellationReason !== 'Cancelado') {
-        routeText = routeText ? `${routeText} (${it.cancellationReason})` : it.cancellationReason;
+      // Información (Ruta o motivo de cancelación sin N/A ni paréntesis, ajustado a maxWidth)
+      const infoText = formatFlightInfoCell(f);
+      if (it.isCancelled) {
+        ctx.fillStyle = '#b91c1c';
+        ctx.font = '500 12px "Segoe UI", Arial, sans-serif';
+      } else {
+        ctx.fillStyle = '#000000';
+        ctx.font = '13px "Segoe UI", Arial, sans-serif';
       }
-      ctx.fillText(routeText, colMap.ruta.x + 12, currentY + rowHeight / 2);
+      ctx.fillText(infoText, colMap.ruta.x + 12, currentY + rowHeight / 2, colMap.ruta.width - 24);
+      ctx.fillStyle = '#000000';
+      ctx.font = '13px "Segoe UI", Arial, sans-serif';
 
       // Programado
       ctx.textAlign = 'center';
@@ -5221,9 +5312,9 @@ function renderDifferencesTableToCanvas(items) {
         ctx.textAlign = 'left';
         ctx.fillText(leg.registration || '', colMap.matricula.x + 12, legY + rowHeight / 2);
 
-        // Ruta
-        const routeText = (leg.route || '').replace(/\s*->\s*/g, '-').replace(/\s+/g, ' ');
-        ctx.fillText(routeText, colMap.ruta.x + 12, legY + rowHeight / 2);
+        // Información (Ruta del tramo)
+        const infoText = formatFlightInfoCell(leg);
+        ctx.fillText(infoText, colMap.ruta.x + 12, legY + rowHeight / 2, colMap.ruta.width - 24);
 
         // Bloque del tramo
         ctx.textAlign = 'center';
@@ -5690,7 +5781,7 @@ function renderVuelosUI() {
                 <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'registration')">Matrícula ⬍</th>
                 <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'studentName')">Alumno ⬍</th>
                 <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'instructorName')">Instructor ⬍</th>
-                <th style="padding: 10px 14px;">Ruta</th>
+                <th style="padding: 10px 14px;">Información</th>
                 <th style="padding: 10px 14px; text-align: center; cursor: pointer;" onclick="handleVuelosSort('flights', 'scheduledMinutes')">Programado ⬍</th>
                 <th style="padding: 10px 14px; text-align: center; cursor: pointer;" onclick="handleVuelosSort('flights', 'flownMinutes')">Bloque ⬍</th>
                 <th style="padding: 10px 14px; text-align: center; cursor: pointer;" onclick="handleVuelosSort('flights', 'deviationMinutes')">Desviación ⬍</th>
@@ -5774,7 +5865,15 @@ function renderVuelosUI() {
                         </div>
                       </td>
                     ` : ''}
-                    <td style="padding: 10px 14px; color: var(--text-muted); ${cellBottomBorder}">${f.route}${f.legsCount > 1 ? ` (${f.legsCount} tramos)` : ''}</td>
+                    <td style="padding: 10px 14px; min-width: 140px; max-width: 250px; line-height: 1.35; overflow-wrap: break-word; color: ${f.isCancelled ? '#f43f5e' : 'var(--text-muted)'}; ${cellBottomBorder}">
+                      ${f.isCancelled ? `
+                        <div style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                          <span style="font-weight: 600; font-size: 12px;">${formatFlightInfoCell(f)}</span>
+                        </div>
+                      ` : `
+                        <span>${formatFlightInfoCell(f)}${f.legsCount > 1 ? ` (${f.legsCount} tramos)` : ''}</span>
+                      `}
+                    </td>
 
                     <!-- Programado: fusionado si pertenece a un bloque vinculado -->
                     ${(!isLinked || isFirstInGroup) ? `
@@ -5882,17 +5981,24 @@ function renderVuelosUI() {
                     <td style="padding: 10px 14px;">${renderPersonBadgeHtml(f.instructorCode, f.instructorName)}</td>
                     <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: #f43f5e;">${f.scheduledHoursFormatted}</td>
                     <td style="padding: 10px 14px; color: var(--text-muted); font-size: 12px;">${f.lessons || '—'}</td>
-                    <td style="padding: 10px 14px; font-size: 12px;">
-                      ${f.cancellationReason ? `
-                        <div style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                          <span style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11px;">
-                            ${f.cancellationReason}
-                          </span>
-                          ${f.comments && f.comments !== f.cancellationReason ? `<span style="color: var(--text-muted); font-size: 12px;">${f.comments}</span>` : ''}
-                        </div>
-                      ` : `
-                        <span style="color: var(--text-muted);">${f.comments || 'Vuelo cancelado (no volado)'}</span>
-                      `}
+                    <td style="padding: 10px 14px; font-size: 12px; min-width: 160px; max-width: 280px; overflow-wrap: break-word; line-height: 1.35;">
+                      <div style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); padding: 3px 8px; border-radius: 6px; font-weight: 600; font-size: 11px; line-height: 1.3;">
+                          ${formatFlightInfoCell(f)}
+                        </span>
+                        ${(() => {
+                          const info = formatFlightInfoCell(f);
+                          const cleanComments = (f.comments || '')
+                            .replace(/\(\s*n\/?a\s*\)/gi, '')
+                            .replace(/\bn\/?a\b/gi, '')
+                            .replace(/[()]/g, '')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                          return (cleanComments && cleanComments.toLowerCase() !== info.toLowerCase() && cleanComments.toLowerCase() !== (f.cancellationReason || '').toLowerCase())
+                            ? `<span style="color: var(--text-muted); font-size: 11px;">${cleanComments}</span>`
+                            : '';
+                        })()}
+                      </div>
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                       <span style="background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
@@ -6166,16 +6272,32 @@ function renderVuelosUI() {
             </div>
 
             <div id="edit-cancellation-reason-container" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(244, 63, 94, 0.3);">
-              <label for="edit-cancellation-reason" style="font-size: 12px; font-weight: 700; color: #f43f5e; display: block; margin-bottom: 4px;">
+              <label for="edit-cancellation-reason-select" style="font-size: 12px; font-weight: 700; color: #f43f5e; display: block; margin-bottom: 6px;">
                 ⚠️ Motivo de Cancelación
               </label>
+              <select
+                id="edit-cancellation-reason-select"
+                class="form-input"
+                style="width: 100%; border-color: rgba(244, 63, 94, 0.4); background: #1e293b; color: #f8fafc; margin-bottom: 8px; cursor: pointer;"
+                onchange="handleCancellationReasonSelect(this.value)"
+              >
+                <option value="">-- Selecciona motivo de cancelación --</option>
+                <option value="Meteorología adversa">Meteorología adversa</option>
+                <option value="Avería mecánica / Mantenimiento">Avería mecánica / Mantenimiento</option>
+                <option value="Indisposición del Alumno">Indisposición del Alumno</option>
+                <option value="Indisposición del Instructor">Indisposición del Instructor</option>
+                <option value="Operacional / Tráfico Aéreo / NOTAM">Operacional / Tráfico Aéreo / NOTAM</option>
+                <option value="Reprogramación de Escuela">Reprogramación de Escuela</option>
+                <option value="No presentado (No show)">No presentado (No show)</option>
+                <option value="Otro">Otro motivo (especificar abajo)...</option>
+              </select>
               <input
                 type="text"
                 id="edit-cancellation-reason"
                 list="cancellation-reasons-datalist"
                 class="form-input"
                 style="width: 100%; border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.05);"
-                placeholder="ej. Meteorología adversa, Avería técnica, Indisposición alumno..."
+                placeholder="Detalle o motivo de cancelación..."
               >
               <datalist id="cancellation-reasons-datalist">
                 <option value="Meteorología adversa"></option>
@@ -6183,7 +6305,7 @@ function renderVuelosUI() {
                 <option value="Indisposición del Alumno"></option>
                 <option value="Indisposición del Instructor"></option>
                 <option value="Operacional / Tráfico Aéreo / NOTAM"></option>
-                <option value="Reprogramación"></option>
+                <option value="Reprogramación de Escuela"></option>
                 <option value="No presentado (No show)"></option>
               </datalist>
             </div>

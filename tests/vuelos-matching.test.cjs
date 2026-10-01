@@ -546,13 +546,14 @@ test('cancelled flights appear in differences image and reports with cancellatio
   assert.match(source, /\['Horas Canceladas', \(kpis\.totalCancelledHoursFormatted/);
   assert.match(source, /'Motivo de Cancelación'/);
 
-  // PDF export must display 'CANCELADO (motivo)' and have 'Horas Canceladas' table
-  assert.match(source, /f\.isCancelled \? `CANCELADO\$\{\(f\.cancellationReason \|\| f\.comments\) \? ` \(\$\{f\.cancellationReason \|\| f\.comments\}\)` : ''\}`/);
+  // PDF export must display 'CANCELADO' cleanly without parentheses and have 'Horas Canceladas' table
+  assert.match(source, /f\.isCancelled \? 'CANCELADO'/);
   assert.match(source, /doc\.text\(`Vuelos Cancelados \(\$\{cancelados\.length\} reservas no ejecutadas\)`/);
 });
 
-test('flight edit modal provides dedicated cancellation reason input and persists it', () => {
+test('flight edit modal provides dedicated cancellation reason select and input and persists it', () => {
   assert.match(source, /id="edit-cancellation-reason"/);
+  assert.match(source, /id="edit-cancellation-reason-select"/);
   assert.match(source, /id="cancellation-reasons-datalist"/);
   assert.match(source, /id="edit-cancellation-reason-container"/);
   assert.match(source, /cancellationReason = isCancelled/);
@@ -574,6 +575,26 @@ test('formatAlumnoCell and formatInstructorCell return short identifiers and res
   // Alumno sin identificativo en Private Radar: no inventar código sintético, mostrar el nombre (se ajusta al espacio)
   assert.equal(formatAlu({ studentName: 'Aguilar López, Carlos', studentCode: '' }), 'Aguilar López, Carlos');
   assert.equal(formatAlu({ studentName: 'Andujar Alvaro, Marco Antonio', studentCode: '' }), 'Andujar Alvaro, Marco Antonio');
+});
+
+test('Información column replaces Ruta and formatFlightInfoCell strips N/A and parentheses', () => {
+  const formatInfo = context.formatFlightInfoCell;
+
+  // Normal flight: displays cleaned route
+  assert.equal(formatInfo({ isCancelled: false, route: 'GCXO -> GCHI -> GCXO' }), 'GCXO-GCHI-GCXO');
+  assert.equal(formatInfo({ isCancelled: false, route: 'N/A' }), '—');
+
+  // Cancelled flight with N/A and parentheses: strips them completely
+  assert.equal(formatInfo({ isCancelled: true, route: 'N/A', cancellationReason: '(Meteorología adversa)' }), 'Meteorología adversa');
+  assert.equal(formatInfo({ isCancelled: true, route: 'N/A', cancellationReason: 'Cancelado (N/A)' }), 'Cancelado');
+  assert.equal(formatInfo({ isCancelled: true, route: 'GCXO -> GCHI', cancellationReason: '(Avería técnica)' }), 'GCXO-GCHI - Avería técnica');
+  assert.equal(formatInfo({ isCancelled: true, route: 'N/A', cancellationReason: 'No presentado (No show)' }), 'No presentado No show');
+
+  // Headers must use Información instead of Ruta
+  assert.match(source, /label: 'Información'/);
+  assert.match(source, /<th[^>]*>Información<\/th>/);
+  assert.match(source, /\['Vuelo', 'Matr\.', 'Alumno', 'Instructor', 'Información'/);
+  assert.match(source, /'Información',\s*'Programado'/);
 });
 
 

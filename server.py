@@ -42,6 +42,187 @@ ATL_RENOMBRADOS_DIR = os.path.join(BASE_DIR, "ATL_Renombrados")
 ATL_ORIGINALES_DIR = os.path.join(BASE_DIR, "ATL_Originales")
 ATL_STATE_FILE = os.path.join(BASE_DIR, "estado_atl.json")
 ATL_FLOTA_FILE = os.path.join(BASE_DIR, "flota_atl.json")
+VUELOS_STATE_FILE = os.path.join(BASE_DIR, "estado_vuelos.json")
+
+
+def save_flight_pdf(pdf_bytes, filename, downloads_dir=None):
+    if not isinstance(pdf_bytes, bytes) or not pdf_bytes.startswith(b"%PDF-"):
+        raise ValueError("El archivo recibido no es un PDF válido")
+    if len(pdf_bytes) > 25 * 1024 * 1024:
+        raise ValueError("El PDF supera el tamaño máximo permitido de 25 MB")
+
+    safe_filename = os.path.basename(filename or "")
+    safe_filename = re.sub(r"[^A-Za-z0-9_.-]", "_", safe_filename).strip("._")
+    if not safe_filename.lower().endswith(".pdf"):
+        raise ValueError("El nombre del archivo debe terminar en .pdf")
+    if not safe_filename:
+        raise ValueError("El nombre del archivo PDF está vacío")
+
+    if downloads_dir is None:
+        user_home = os.path.expanduser("~")
+        preferred_downloads = os.path.join(user_home, "Downloads")
+        if not os.path.isdir(preferred_downloads):
+            preferred_downloads = os.path.join(user_home, "Descargas")
+        target_directories = [preferred_downloads, os.path.join(BASE_DIR, "Informes_Vuelos")]
+    else:
+        target_directories = [downloads_dir]
+
+    import tempfile
+
+    permission_error = None
+    for target_directory in target_directories:
+        temporary_path = None
+        try:
+            os.makedirs(target_directory, exist_ok=True)
+            target_path = os.path.abspath(os.path.join(target_directory, safe_filename))
+            with tempfile.NamedTemporaryFile(dir=target_directory, prefix=".vuelos-", suffix=".tmp", delete=False) as temp_file:
+                temporary_path = temp_file.name
+                temp_file.write(pdf_bytes)
+            os.replace(temporary_path, target_path)
+            return target_path
+        except PermissionError as error:
+            permission_error = error
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    pass
+        except OSError:
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    pass
+            raise
+
+    if permission_error:
+        raise permission_error
+    raise OSError("No se encontró una carpeta disponible para guardar el PDF")
+
+
+def save_flight_excel(excel_bytes, filename, downloads_dir=None):
+    if not isinstance(excel_bytes, bytes) or not excel_bytes.startswith(b"PK\x03\x04"):
+        raise ValueError("El archivo recibido no es un Excel (.xlsx) válido")
+    if len(excel_bytes) > 25 * 1024 * 1024:
+        raise ValueError("El Excel supera el tamaño máximo permitido de 25 MB")
+
+    safe_filename = os.path.basename(filename or "")
+    safe_filename = re.sub(r"[^A-Za-z0-9_.-]", "_", safe_filename).strip("._")
+    if not safe_filename.lower().endswith(".xlsx"):
+        raise ValueError("El nombre del archivo debe terminar en .xlsx")
+    if not safe_filename:
+        raise ValueError("El nombre del archivo Excel está vacío")
+
+    if downloads_dir is None:
+        user_home = os.path.expanduser("~")
+        preferred_downloads = os.path.join(user_home, "Downloads")
+        if not os.path.isdir(preferred_downloads):
+            preferred_downloads = os.path.join(user_home, "Descargas")
+        target_directories = [preferred_downloads, os.path.join(BASE_DIR, "Informes_Vuelos")]
+    else:
+        target_directories = [downloads_dir]
+
+    import tempfile
+
+    permission_error = None
+    for target_directory in target_directories:
+        temporary_path = None
+        try:
+            os.makedirs(target_directory, exist_ok=True)
+            target_path = os.path.abspath(os.path.join(target_directory, safe_filename))
+            with tempfile.NamedTemporaryFile(dir=target_directory, prefix=".vuelos-", suffix=".tmp", delete=False) as temp_file:
+                temporary_path = temp_file.name
+                temp_file.write(excel_bytes)
+            os.replace(temporary_path, target_path)
+            return target_path
+        except PermissionError as error:
+            permission_error = error
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    pass
+        except OSError:
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    pass
+            raise
+
+    if permission_error:
+        raise permission_error
+    raise OSError("No se encontró una carpeta disponible para guardar el Excel")
+
+
+def save_flight_image(image_bytes, filename, downloads_dir=None):
+    if not isinstance(image_bytes, bytes) or not image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("El archivo recibido no es una imagen PNG válida")
+    if len(image_bytes) > 20 * 1024 * 1024:
+        raise ValueError("La imagen supera el tamaño máximo permitido de 20 MB")
+
+    safe_filename = os.path.basename(filename or "")
+    safe_filename = re.sub(r"[^A-Za-z0-9_.-]", "_", safe_filename).strip("._")
+    if not safe_filename.lower().endswith(".png"):
+        safe_filename += ".png"
+    if not safe_filename:
+        raise ValueError("El nombre del archivo de imagen está vacío")
+
+    if downloads_dir is None:
+        user_home = os.path.expanduser("~")
+        preferred_downloads = os.path.join(user_home, "Downloads")
+        if not os.path.isdir(preferred_downloads):
+            preferred_downloads = os.path.join(user_home, "Descargas")
+        target_directories = [preferred_downloads, os.path.join(BASE_DIR, "Informes_Vuelos")]
+    else:
+        target_directories = [downloads_dir]
+
+    import tempfile
+
+    permission_error = None
+    for target_directory in target_directories:
+        temporary_path = None
+        try:
+            os.makedirs(target_directory, exist_ok=True)
+            target_path = os.path.abspath(os.path.join(target_directory, safe_filename))
+            with tempfile.NamedTemporaryFile(dir=target_directory, prefix=".vuelos-", suffix=".tmp", delete=False) as temp_file:
+                temporary_path = temp_file.name
+                temp_file.write(image_bytes)
+            os.replace(temporary_path, target_path)
+            return target_path
+        except PermissionError as error:
+            permission_error = error
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    pass
+        except OSError:
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    pass
+            raise
+
+    if permission_error:
+        raise permission_error
+    raise OSError("No se encontró una carpeta disponible para guardar la imagen")
+
+
+def reveal_file_in_explorer(file_path):
+    import subprocess
+
+    absolute_path = os.path.abspath(file_path)
+    try:
+        subprocess.Popen(["explorer.exe", f"/select,{absolute_path}"])
+        return True
+    except OSError:
+        try:
+            os.startfile(os.path.dirname(absolute_path))
+            return True
+        except (AttributeError, OSError):
+            return False
 
 os.makedirs(DIVIDIDOS_DIR, exist_ok=True)
 os.makedirs(THUMB_DIR, exist_ok=True)
@@ -924,6 +1105,17 @@ class ExamHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(404, "PDF no encontrado")
 
+        # --- Rutas GET para Vuelos ---
+        elif path == "/api/vuelos/informes":
+            if os.path.exists(VUELOS_STATE_FILE):
+                try:
+                    with open(VUELOS_STATE_FILE, "r", encoding="utf-8") as f:
+                        self.send_json(json.load(f))
+                        return
+                except Exception:
+                    pass
+            self.send_json([])
+
         # --- Rutas GET para ATL ---
         elif path == "/api/atl/items":
             state = load_atl_state()
@@ -1044,6 +1236,86 @@ class ExamHandler(BaseHTTPRequestHandler):
         path = parsed.path
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length > 0 else b"{}"
+
+        # Guardar historial de informes de vuelos en disco
+        if path == "/api/vuelos/guardar":
+            try:
+                data = json.loads(body.decode("utf-8"))
+                with open(VUELOS_STATE_FILE, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                self.send_json({"status": "ok", "total": len(data)})
+            except Exception as e:
+                self.send_json({"status": "error", "message": str(e)}, status=500)
+            return
+
+        elif path == "/api/vuelos/guardar_pdf":
+            try:
+                filename = urllib.parse.unquote(self.headers.get("X-Filename", ""))
+                saved_path = save_flight_pdf(body, filename)
+                explorer_opened = reveal_file_in_explorer(saved_path)
+                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                if not os.path.isdir(downloads_dir):
+                    downloads_dir = os.path.join(os.path.expanduser("~"), "Descargas")
+                location = "Descargas" if os.path.normcase(os.path.dirname(saved_path)) == os.path.normcase(os.path.abspath(downloads_dir)) else "Informes_Vuelos"
+                self.send_json({
+                    "status": "ok",
+                    "archivo": os.path.basename(saved_path),
+                    "ruta": saved_path,
+                    "carpeta": os.path.dirname(saved_path),
+                    "ubicacion": location,
+                    "explorer_opened": explorer_opened
+                })
+            except ValueError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=400)
+            except OSError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=500)
+            return
+
+        elif path == "/api/vuelos/guardar_excel":
+            try:
+                filename = urllib.parse.unquote(self.headers.get("X-Filename", ""))
+                saved_path = save_flight_excel(body, filename)
+                explorer_opened = reveal_file_in_explorer(saved_path)
+                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                if not os.path.isdir(downloads_dir):
+                    downloads_dir = os.path.join(os.path.expanduser("~"), "Descargas")
+                location = "Descargas" if os.path.normcase(os.path.dirname(saved_path)) == os.path.normcase(os.path.abspath(downloads_dir)) else "Informes_Vuelos"
+                self.send_json({
+                    "status": "ok",
+                    "archivo": os.path.basename(saved_path),
+                    "ruta": saved_path,
+                    "carpeta": os.path.dirname(saved_path),
+                    "ubicacion": location,
+                    "explorer_opened": explorer_opened
+                })
+            except ValueError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=400)
+            except OSError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=500)
+            return
+
+        elif path == "/api/vuelos/guardar_imagen":
+            try:
+                filename = urllib.parse.unquote(self.headers.get("X-Filename", ""))
+                saved_path = save_flight_image(body, filename)
+                explorer_opened = reveal_file_in_explorer(saved_path)
+                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                if not os.path.isdir(downloads_dir):
+                    downloads_dir = os.path.join(os.path.expanduser("~"), "Descargas")
+                location = "Descargas" if os.path.normcase(os.path.dirname(saved_path)) == os.path.normcase(os.path.abspath(downloads_dir)) else "Informes_Vuelos"
+                self.send_json({
+                    "status": "ok",
+                    "archivo": os.path.basename(saved_path),
+                    "ruta": saved_path,
+                    "carpeta": os.path.dirname(saved_path),
+                    "ubicacion": location,
+                    "explorer_opened": explorer_opened
+                })
+            except ValueError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=400)
+            except OSError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=500)
+            return
 
         # 0. Previsualización ultrarrápida de la cabecera de la 1ª página del PDF recibido y detección de páginas
         if path == "/api/extraer_cabecera_preview":

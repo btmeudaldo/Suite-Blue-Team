@@ -4,6 +4,7 @@ import time
 import socket
 import threading
 import urllib.request
+import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
@@ -20,36 +21,45 @@ import server
 PORT = 8000
 URL = f"http://127.0.0.1:{PORT}"
 
-def is_port_in_use(port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(0.3)
-        return s.connect_ex(('127.0.0.1', port)) == 0
+def is_server_healthy():
+    try:
+        req = urllib.request.Request(f"{URL}/", headers={"User-Agent": "HealthCheck"})
+        with urllib.request.urlopen(req, timeout=1.0) as res:
+            return res.status == 200
+    except Exception:
+        return False
+
+def kill_process_on_port(port):
+    try:
+        cmd = f'powershell -NoProfile -Command "$c = Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue; if ($c.OwningProcess -gt 0) {{ Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue }}"'
+        subprocess.run(cmd, shell=True, timeout=5)
+        time.sleep(0.5)
+    except Exception:
+        pass
 
 def start_backend():
-    if not is_port_in_use(PORT):
+    if not is_server_healthy():
+        kill_process_on_port(PORT)
         server.run(PORT)
 
-def wait_for_server():
-    for _ in range(40):
-        try:
-            req = urllib.request.Request(f"{URL}/", headers={"User-Agent": "HealthCheck"})
-            with urllib.request.urlopen(req, timeout=0.5) as res:
-                if res.status == 200:
-                    return True
-        except Exception:
-            pass
-        time.sleep(0.1)
+def wait_for_server(max_seconds=15):
+    start = time.time()
+    while time.time() - start < max_seconds:
+        if is_server_healthy():
+            return True
+        time.sleep(0.2)
     return False
 
 if __name__ == '__main__':
     os.chdir(BASE_DIR)
 
-    # 1. Iniciar el servidor local en un hilo secundario del mismo proceso
-    t = threading.Thread(target=start_backend, daemon=True)
-    t.start()
+    # 1. Iniciar el servidor local en segundo plano si no está activo
+    if not is_server_healthy():
+        t = threading.Thread(target=start_backend, daemon=True)
+        t.start()
 
     # 2. Esperar a que el servidor HTTP esté activo y respondiendo
-    wait_for_server()
+    wait_for_server(max_seconds=15)
 
     # 3. Lanzar la ventana nativa de escritorio con WebView2 (Edge nativo)
     try:
@@ -61,12 +71,13 @@ if __name__ == '__main__':
             height=920,
             min_size=(1024, 700)
         )
-        # webview.start() mantiene la app abierta hasta que el usuario cierra la ventana
-        webview.start(private_mode=False)
+        # debug solo se activa si se pasa explícitamente el parámetro --debug o -d
+        is_debug = '--debug' in sys.argv or '-d' in sys.argv
+        webview.start(debug=is_debug, private_mode=False)
     except Exception as e:
         # Fallback en caso de que WebView2 no esté disponible
         import webbrowser
         webbrowser.open(URL)
-        # Mantener el proceso vivo
         while True:
             time.sleep(1)
+

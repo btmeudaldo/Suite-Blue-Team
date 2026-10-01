@@ -5522,7 +5522,7 @@ function renderVuelosUI() {
 
   let html = `
     <!-- Cabecera del Modulo -->
-    <header class="app-header">
+    <header class="app-header" style="margin-bottom: 18px;">
       <div class="brand-area">
         <div class="logo-badge" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: var(--primary);">✈️</div>
         <div>
@@ -5596,15 +5596,11 @@ function renderVuelosUI() {
             </button>
           </div>
         </div>
-        <button type="button" class="btn btn-secondary" onclick="loadSampleData2809()" title="Cargar datos de muestra del 28/09/2026">
-          <span>🔄</span>
-          <span>Cargar Muestra (28/09)</span>
-        </button>
       </div>
     </header>
 
     ${vuelosState.saveNotice ? `
-      <div class="state-notice" style="border-color: #10b981; background: rgba(16, 185, 129, 0.15); color: #10b981;">
+      <div class="state-notice" style="border-color: #10b981; background: rgba(16, 185, 129, 0.15); color: #10b981; margin-bottom: 18px;">
         ✅ <strong>${vuelosState.saveNotice}</strong>
       </div>
     ` : ''}
@@ -6554,6 +6550,7 @@ if (typeof document !== 'undefined') {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 14px;
+    margin-top: 18px;
     margin-bottom: 20px;
   }
   .vuelos-kpi-card {

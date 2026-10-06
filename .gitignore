@@ -26,10 +26,16 @@ estado_examenes.json
 estado_atl.json
 estado_secuencia.json
 estado_vuelos.json
+estado_items_corregidos.json
+estado_expedientes_revisados.json
+items_suspendidos_manuales.json
 estado_examenes.json.corrupt-*
 estado_atl.json.corrupt-*
 estado_secuencia.json.corrupt-*
 estado_vuelos.json.corrupt-*
+estado_items_corregidos.json.corrupt-*
+estado_expedientes_revisados.json.corrupt-*
+items_suspendidos_manuales.json.corrupt-*
 *.bak
 *Recuperado*
 ~$*.docx

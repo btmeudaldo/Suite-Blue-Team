@@ -199,6 +199,10 @@ test('differences image renders separate Instructor and Alumno columns', () => {
   const rentalFlight = { flightType: 'Rental', pilotCode: 'PAFON', pilotName: 'Paula Afonso' };
   assert.equal(formatInst(rentalFlight), '');
   assert.equal(formatAlu(rentalFlight), 'PAFON');
+
+  // Columnas Instructor y Alumno siempre en negro (#000000) tanto en vuelos individuales como agrupados
+  assert.match(source, /formatInstructorCell\(f\)[\s\S]*?ctx\.fillStyle = '#000000';[\s\S]*?ctx\.fillText\(formatAlumnoCell\(f\)/);
+  assert.match(source, /ctx\.fillText\(formatMinutesToH_Mm\(Math\.abs\(it\.deviationMinutes\)\)[\s\S]*?Texto Celda Unificada Instructor y Alumno[\s\S]*?ctx\.fillStyle = '#000000';[\s\S]*?ctx\.fillText\(instName[\s\S]*?ctx\.fillStyle = '#000000';[\s\S]*?ctx\.fillText\(alumName/);
 });
 
 test('rental or time-building flight parses student as PIC and passenger as instructor', () => {
@@ -348,6 +352,7 @@ test('linked flights table merges scheduled time, deviation, and status using ro
   // Rowspan on scheduled time, deviation, and status
   assert.match(source, /rowspan="\$\{groupCount\}"/);
   assert.match(source, /🔗 Tramo \$\{legIndex\}\/\$\{groupCount\}/);
+  assert.match(source, /white-space:\s*nowrap;\s*display:\s*inline-block/);
   assert.match(source, /unlinkFlights\('\$\{f\.linkedGroupId\}'\)/);
 });
 
@@ -595,6 +600,316 @@ test('Información column replaces Ruta and formatFlightInfoCell strips N/A and 
   assert.match(source, /<th[^>]*>Información<\/th>/);
   assert.match(source, /\['Vuelo', 'Matr\.', 'Alumno', 'Instructor', 'Información'/);
   assert.match(source, /'Información',\s*'Programado'/);
+});
+
+test('punctuality filters and status remove margins and count all excess flights', () => {
+  // Las etiquetas de los filtros no deben contener márgenes ±5m ni >5m
+  assert.match(source, /\{\s*id:\s*'ON_TIME',\s*label:\s*'Puntuales'\s*\}/);
+  assert.match(source, /\{\s*id:\s*'DELAYED',\s*label:\s*'Con Exceso'\s*\}/);
+  assert.doesNotMatch(source, /Puntuales \(±5m\)/);
+  assert.doesNotMatch(source, /Con Exceso \(>5m\)/);
+
+  const mockBooking = (id, fn, mins) => ({
+    bookingId: id, flightNumber: fn, registration: 'EC-OKC',
+    dateBegin: new Date('2026-09-28T10:00:00Z'), dateEnd: new Date('2026-09-28T11:00:00Z'),
+    scheduledMinutes: mins, flightType: 'Instruction'
+  });
+  const mockFlown = (fn, mins) => ({
+    flightNumber: fn, registration: 'EC-OKC',
+    date: new Date('2026-09-28T10:00:00Z'), start: new Date('2026-09-28T10:00:00Z'), end: new Date('2026-09-28T11:00:00Z'),
+    blockMinutes: mins
+  });
+
+  // Vuelo con desviación 0 es estrictamente PUNTUAL
+  const onTimeTest = matchFlights([mockBooking('b1', 'F1', 60)], [mockFlown('F1', 60)]);
+  assert.equal(onTimeTest[0].status, 'ON_TIME');
+  assert.equal(onTimeTest[0].deviationMinutes, 0);
+
+  // Vuelo con exceso de 1 min (+1) ahora debe ser DELAYED (Con Exceso), no ON_TIME
+  const excessTest1 = matchFlights([mockBooking('b2', 'F2', 60)], [mockFlown('F2', 61)]);
+  assert.equal(excessTest1[0].status, 'DELAYED');
+  assert.equal(excessTest1[0].deviationMinutes, 1);
+
+  // Vuelo con exceso de 5 min (+5) debe ser DELAYED (Con Exceso)
+  const excessTest5 = matchFlights([mockBooking('b3', 'F3', 60)], [mockFlown('F3', 65)]);
+  assert.equal(excessTest5[0].status, 'DELAYED');
+  assert.equal(excessTest5[0].deviationMinutes, 5);
+
+  // Vuelo adelantado de 1 min (-1) debe ser EARLY (Adelantado), no ON_TIME
+  const earlyTest1 = matchFlights([mockBooking('b4', 'F4', 60)], [mockFlown('F4', 59)]);
+  assert.equal(earlyTest1[0].status, 'EARLY');
+  assert.equal(earlyTest1[0].deviationMinutes, -1);
+
+  // KPIs ejecutivos: deben contar puntual solo 0 y exceso cualquier > 0
+  const kpis = context.calculateExecutiveKpis([
+    { scheduledMinutes: 60, flownMinutes: 60, deviationMinutes: 0, status: 'ON_TIME' },
+    { scheduledMinutes: 60, flownMinutes: 62, deviationMinutes: 2, status: 'DELAYED' },
+    { scheduledMinutes: 60, flownMinutes: 58, deviationMinutes: -2, status: 'EARLY' }
+  ]);
+  assert.equal(kpis.onTimeFlightsCount, 1);
+  assert.equal(kpis.delayedFlightsCount, 1);
+  assert.equal(kpis.earlyFlightsCount, 1);
+});
+
+test('createFlightsFromProgramado loads bookings without volado excel for ATL manual entry', () => {
+  const createFlights = context.createFlightsFromProgramado;
+  assert.equal(typeof createFlights, 'function');
+
+  const mockBookings = [
+    {
+      bookingId: 'vfrn-1',
+      flightNumber: '9901',
+      registration: 'EC-NNX',
+      scheduledMinutes: 90,
+      studentCode: 'VPERE',
+      instructorCode: 'LARTE',
+      flightType: 'Instruction'
+    },
+    {
+      bookingId: 'vfrn-2',
+      flightNumber: '9902',
+      registration: 'EC-OKM',
+      scheduledMinutes: 120,
+      studentCode: 'PAFON',
+      instructorCode: 'LARTE',
+      flightType: 'Instruction'
+    }
+  ];
+
+  // Caso 1: Pre-rellenar con horas programadas (para luego ajustar diferencias con el ATL)
+  const flightsPrefill = createFlights(mockBookings, true);
+  assert.equal(flightsPrefill.length, 2);
+  assert.equal(flightsPrefill[0].isCancelled, false);
+  assert.equal(flightsPrefill[0].scheduledMinutes, 90);
+  assert.equal(flightsPrefill[0].flownMinutes, 90);
+  assert.equal(flightsPrefill[0].isManualAtl, true);
+  assert.equal(flightsPrefill[0].studentName, 'Perez Perez, Vidal');
+  assert.equal(flightsPrefill[0].instructorName, 'Arteaga Darias, Luis Fernando');
+
+  // Caso 2: Inicializar en 00:00 para ingresar todos los tiempos a mano desde el ATL
+  const flightsZero = createFlights(mockBookings, false);
+  assert.equal(flightsZero.length, 2);
+  assert.equal(flightsZero[0].isCancelled, false);
+  assert.equal(flightsZero[0].scheduledMinutes, 90);
+  assert.equal(flightsZero[0].flownMinutes, 0);
+  assert.equal(flightsZero[0].flownHoursFormatted, '00:00');
+  assert.equal(flightsZero[0].isManualAtl, true);
+});
+
+test('manual ATL recovery of unclosed Private Radar flights updates KPIs correctly', () => {
+  // Simulamos un día donde 2 vuelos VFRN no se cerraron en Private Radar
+  // y por ende aparecían inicialmente como cancelados (matchedLegs = 0)
+  const bookings = [
+    { bookingId: 'b1', flightNumber: '4001', scheduledMinutes: 90, registration: 'EC-NNX' },
+    { bookingId: 'b2', flightNumber: '4002', scheduledMinutes: 120, registration: 'EC-OKM' }
+  ];
+  // Sin vuelos en volado
+  const matched = matchFlights(bookings, []);
+  assert.equal(matched[0].isCancelled, true);
+  assert.equal(matched[1].isCancelled, true);
+
+  // El usuario tiene el ATL y registra los datos reales de bloque manualmente:
+  // Vuelo 1: Voló 95 min (5 min de exceso)
+  matched[0].isCancelled = false;
+  matched[0].cancelledMinutes = 0;
+  matched[0].cancelledHoursFormatted = '00:00';
+  matched[0].flownMinutes = 95;
+  matched[0].flownHoursFormatted = '01:35';
+  matched[0].deviationMinutes = 5;
+  matched[0].deviationHoursFormatted = '+00:05';
+  matched[0].status = 'DELAYED';
+  matched[0].isManualAtl = true;
+
+  // Vuelo 2: Voló puntual 120 min
+  matched[1].isCancelled = false;
+  matched[1].cancelledMinutes = 0;
+  matched[1].cancelledHoursFormatted = '00:00';
+  matched[1].flownMinutes = 120;
+  matched[1].flownHoursFormatted = '02:00';
+  matched[1].deviationMinutes = 0;
+  matched[1].deviationHoursFormatted = '00:00';
+  matched[1].status = 'ON_TIME';
+  matched[1].isManualAtl = true;
+
+  const kpis = context.calculateExecutiveKpis(matched);
+  assert.equal(kpis.totalFlights, 2);
+  assert.equal(kpis.executedFlightsCount, 2);
+  assert.equal(kpis.cancelledFlightsCount, 0);
+  assert.equal(kpis.cancellationRate, 0);
+  assert.equal(kpis.totalFlownMinutes, 215);
+  assert.equal(kpis.totalFlownHoursFormatted, '03:35');
+  assert.equal(kpis.delayedFlightsCount, 1);
+  assert.equal(kpis.onTimeFlightsCount, 1);
+});
+
+test('UI exposes programado-only processing and ATL manual entry triggers', () => {
+  assert.match(source, /processUploadedProgramadoOnly/);
+  assert.match(source, /triggerProcessProgOnly/);
+  assert.match(source, /Cargar Solo Programado \(Completar con ATL\)/);
+  assert.match(source, /recoverCancelledFlightWithAtl/);
+  assert.match(source, /📋 ATL/);
+});
+
+test('formatDateLongSpanish formats date with day of week in Spanish', () => {
+  const formatDate = context.formatDateLongSpanish;
+  assert.equal(typeof formatDate, 'function');
+  assert.equal(formatDate('09-10-2026'), 'Viernes 9 de Octubre de 2026');
+  assert.equal(formatDate('09/10/2026'), 'Viernes 9 de Octubre de 2026');
+  assert.equal(formatDate('2026-10-09'), 'Viernes 9 de Octubre de 2026');
+  assert.equal(formatDate('28-09-2026'), 'Lunes 28 de Septiembre de 2026');
+
+  // Verify renderDifferencesTableToCanvas incorporates the date line on top
+  assert.match(source, /formatDateLongSpanish\(rawDate \|\| new Date\(\)\)/);
+  assert.match(source, /dateHeaderHeight = 38/);
+  assert.match(source, /ctx\.fillText\(dateFormatted, totalWidth \/ 2, dateHeaderHeight \/ 2\)/);
+});
+
+test('time building flights strictly forbid student as instructor and only allow instructors from list or passenger', () => {
+  const formatInst = context.formatInstructorCell;
+  const formatAlu = context.formatAlumnoCell;
+
+  // 1. Time building flight where student was also set as instructor -> instructor must be empty, student is student
+  const tbFlightStudentAsInst = {
+    flightType: 'Time Building',
+    studentCode: 'LANSO',
+    studentName: 'Laura Ansoleaga Tejera',
+    instructorCode: 'LANSO',
+    instructorName: 'Laura Ansoleaga Tejera',
+    pilotCode: 'LANSO',
+    pilotName: 'Laura Ansoleaga Tejera'
+  };
+  assert.equal(formatInst(tbFlightStudentAsInst), '', 'Instructor should NOT be the student');
+  assert.equal(formatAlu(tbFlightStudentAsInst), 'LANSO', 'Student should be student');
+
+  // 2. Time building with passenger who is an instructor
+  const tbFlightWithInstPax = {
+    flightType: 'Time Building',
+    studentCode: 'LANSO',
+    studentName: 'Laura Ansoleaga Tejera',
+    passengerCode: 'EDOMI',
+    passengerName: 'Eduardo Dominguez'
+  };
+  assert.equal(formatInst(tbFlightWithInstPax), 'EDOMI', 'Instructor should be the instructor from passenger');
+
+  // 3. Time building with passenger who is an accompanying person
+  const tbFlightWithGeneralPax = {
+    flightType: 'Time Building',
+    studentCode: 'LANSO',
+    studentName: 'Laura Ansoleaga Tejera',
+    passengerCode: 'PAX01',
+    passengerName: 'Amigo Pasajero'
+  };
+  assert.equal(formatInst(tbFlightWithGeneralPax), 'PAX01', 'Passenger can be shown in instructor column if companion');
+
+  // 4. Time building with official instructor in instructor field
+  const tbFlightWithOfficialInst = {
+    flightType: 'Time Building',
+    studentCode: 'LANSO',
+    studentName: 'Laura Ansoleaga Tejera',
+    instructorCode: 'LARTE',
+    instructorName: 'Luis Fernando Arteaga Darias'
+  };
+  assert.equal(formatInst(tbFlightWithOfficialInst), 'LARTE');
+
+  // 5. Time building with non-instructor person (not in catalog, not passenger) -> cleared
+  const tbFlightWithRandomPerson = {
+    flightType: 'Time Building',
+    studentCode: 'LANSO',
+    studentName: 'Laura Ansoleaga Tejera',
+    instructorCode: 'RANDOM',
+    instructorName: 'Persona Desconocida'
+  };
+  assert.equal(formatInst(tbFlightWithRandomPerson), '');
+});
+
+test('aggregateByStudent groups the same student by identifier even if name is written in different orders', () => {
+  const aggregate = context.aggregateByStudent;
+  const flights = [
+    {
+      studentCode: 'PAFON',
+      studentName: 'Paula Simonetta Afonso Martinez',
+      scheduledMinutes: 60,
+      flownMinutes: 60,
+      deviationMinutes: 0,
+      status: 'ON_TIME'
+    },
+    {
+      studentCode: 'PAFON',
+      studentName: 'Afonso Martinez, Paula Simonetta',
+      scheduledMinutes: 120,
+      flownMinutes: 125,
+      deviationMinutes: 5,
+      status: 'DELAYED'
+    }
+  ];
+
+  const result = aggregate(flights);
+  assert.equal(result.length, 1, 'Both flights for student PAFON should group into 1 entry');
+  assert.equal(result[0].studentCode, 'PAFON');
+  assert.equal(result[0].flightsCount, 2);
+  assert.equal(result[0].totalScheduledMinutes, 180);
+  assert.equal(result[0].totalFlownMinutes, 185);
+});
+
+test('registerCancellationReason adds new reason to list, avoids duplicates/generic values and persists', () => {
+  const getAll = context.getAllCancellationReasons;
+  const register = context.registerCancellationReason;
+
+  const initialCount = getAll().length;
+  assert.ok(initialCount >= 7, 'Should have predefined cancellation reasons');
+
+  // Attempt to register generic values: should be ignored
+  register('Otro');
+  register('Cancelado');
+  register('   ');
+  assert.equal(getAll().length, initialCount);
+
+  // Register a new custom reason
+  const newReason = 'Cierre de pista por fauna';
+  register(newReason, false);
+  const updatedReasons = getAll();
+  assert.equal(updatedReasons.length, initialCount + 1);
+  assert.ok(updatedReasons.includes(newReason));
+
+  // Register duplicate with different casing/spaces: should not add twice
+  register('  cierre de pista por fauna  ', false);
+  assert.equal(getAll().length, initialCount + 1);
+
+  // Check persistence in localStorage
+  let savedKey = null;
+  let savedVal = null;
+  context.localStorage = {
+    setItem: (k, v) => {
+      savedKey = k;
+      savedVal = v;
+    }
+  };
+  register('Fallo de radiobaliza', true);
+  assert.equal(savedKey, 'blue_team_custom_cancellation_reasons_v1');
+  assert.ok(savedVal.includes('Fallo de radiobaliza'));
+  assert.ok(getAll().includes('Fallo de radiobaliza'));
+});
+
+test('flight edit modal dynamic cancellation options and auto-registration on save', () => {
+  assert.match(source, /refreshCancellationReasonOptions\(\)/);
+  assert.match(source, /getAllCancellationReasons\(\)\.includes\(currentReason\)/);
+  assert.match(source, /getAllCancellationReasons\(\)\.includes\(reasonInput\.value\)/);
+  assert.match(source, /if \(isCancelled && cancellationReason\) \{\s*registerCancellationReason\(cancellationReason\);/);
+  assert.match(source, /\$\{getAllCancellationReasons\(\)\.map\(r => `<option value="\$\{r\.replace\(\/"\/g, '&quot;'\)\}">\$\{r\}<\/option>`\)\.join\(''\)\}/);
+  assert.match(source, /id="edit-cancellation-reason-select"/);
+  assert.match(source, /id="cancellation-reasons-datalist"/);
+});
+
+test('deviation column renders flying less in red and flying more in yellow', () => {
+  // Main table deviation color: negative in red #f43f5e, positive in yellow #f59e0b
+  assert.match(source, /groupDiff < 0 \? '#f43f5e' : groupDiff > 0 \? '#f59e0b'/);
+  // Status badge: EARLY in red #f43f5e, DELAYED in yellow #f59e0b
+  assert.match(source, /groupStatus === 'EARLY' \? '#f43f5e' : '#f59e0b'/);
+  // Canvas export: flying less in red pastel #fee2e2 and text #b91c1c, flying more in yellow pastel #fef3c7 and text #b45309
+  assert.match(source, /isRed\) \{\s*ctx\.fillStyle = '#fee2e2';[\s\S]*\} else if \(isYellow\) \{\s*ctx\.fillStyle = '#fef3c7';/);
+  // Aggregate tables: negative in red #f43f5e, positive in yellow #f59e0b
+  assert.match(source, /totalDeviationMinutes < 0 \? '#f43f5e' : p\.totalDeviationMinutes > 0 \? '#f59e0b'/);
+  assert.match(source, /total_deviation_min < 0 \? '#f43f5e' : i\.total_deviation_min > 0 \? '#f59e0b'/);
 });
 
 

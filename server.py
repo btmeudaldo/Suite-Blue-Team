@@ -1227,6 +1227,39 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": str(e)}, status=500)
             return
 
+        elif path == "/api/items_suspendidos/analizar":
+            try:
+                import items_suspendidos_service as iss
+                query = urllib.parse.parse_qs(parsed.query)
+                archivo = query.get("archivo", [None])[0]
+                if archivo and archivo != "all":
+                    filepath = os.path.join(iss.FOLDER_ITEMS, os.path.basename(archivo))
+                    data = iss.analyze_excel_file(filepath)
+                else:
+                    data = iss.analyze_all_courses()
+                self.send_json(data)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/archivos":
+            try:
+                import items_suspendidos_service as iss
+                files = iss.list_available_files()
+                self.send_json(files)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/corregidos":
+            try:
+                import items_suspendidos_service as iss
+                corregidos = iss.load_corregidos()
+                self.send_json(corregidos)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
         else:
             self.send_error(404, "Ruta no encontrada")
 
@@ -1315,6 +1348,129 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "error": str(error)}, status=400)
             except OSError as error:
                 self.send_json({"status": "error", "error": str(error)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/upload":
+            try:
+                import items_suspendidos_service as iss
+                import base64
+                from datetime import datetime
+                filename = urllib.parse.unquote(self.headers.get("X-Filename", ""))
+                if not filename:
+                    try:
+                        data = json.loads(body.decode("utf-8"))
+                        filename = data.get("filename", f"Exercises_{int(datetime.now().timestamp())}.xlsx")
+                        content = base64.b64decode(data.get("file_data", ""))
+                    except Exception:
+                        filename = f"Exercises_{int(datetime.now().timestamp())}.xlsx"
+                        content = body
+                else:
+                    content = body
+
+                if not filename.endswith(".xlsx"):
+                    filename += ".xlsx"
+
+                os.makedirs(iss.FOLDER_ITEMS, exist_ok=True)
+                dest_path = os.path.join(iss.FOLDER_ITEMS, os.path.basename(filename))
+                with open(dest_path, "wb") as f:
+                    f.write(content)
+
+                res = iss.analyze_all_courses()
+                res["uploaded_file"] = filename
+                self.send_json(res)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/eliminar":
+            try:
+                import items_suspendidos_service as iss
+                data = json.loads(body.decode("utf-8"))
+                filename = os.path.basename(data.get("filename", ""))
+                target = os.path.join(iss.FOLDER_ITEMS, filename)
+                if os.path.exists(target):
+                    os.remove(target)
+                self.send_json({"status": "ok", "archivos": iss.list_available_files()})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/marcar_corregido":
+            try:
+                import items_suspendidos_service as iss
+                data = json.loads(body.decode("utf-8"))
+                item_id = data.get("id")
+                marcado = data.get("marcado", True)
+                metadata = data.get("metadata", {})
+                if not item_id:
+                    self.send_json({"error": "Falta 'id'"}, status=400)
+                    return
+                iss.marcar_item_corregido(item_id, marcado=marcado, metadata=metadata)
+                self.send_json({"status": "ok", "id": item_id, "marcado": marcado})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/marcar_lote":
+            try:
+                import items_suspendidos_service as iss
+                data = json.loads(body.decode("utf-8"))
+                item_ids = data.get("ids", [])
+                marcado = data.get("marcado", True)
+                iss.marcar_lote_corregidos(item_ids, marcado=marcado)
+                self.send_json({"status": "ok", "total_marcados": len(item_ids), "marcado": marcado})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/marcar_expediente_revisado":
+            try:
+                import items_suspendidos_service as iss
+                data = json.loads(body.decode("utf-8"))
+                student_key = data.get("student_key", "")
+                revisado = data.get("revisado", True)
+                if not student_key:
+                    self.send_json({"error": "Falta student_key"}, status=400)
+                    return
+                iss.marcar_expediente_revisado(student_key, revisado=revisado)
+                self.send_json({"status": "ok", "student_key": student_key, "revisado": revisado})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/agregar_manual":
+            try:
+                import items_suspendidos_service as iss
+                data = json.loads(body.decode("utf-8"))
+                student_code = data.get("student_code", "")
+                student_name = data.get("student_name", "")
+                curso = data.get("curso", "General")
+                item = data.get("item", "")
+                nota = data.get("nota", 2.0)
+                fecha = data.get("fecha", None)
+                flight_id = data.get("flight_id", "")
+                lesson = data.get("lesson", "")
+                observacion = data.get("observacion", "")
+                
+                if not item or (not student_code and not student_name):
+                    self.send_json({"error": "Falta nombre del alumno o del ítem"}, status=400)
+                    return
+                
+                item_creado = iss.agregar_item_manual(student_code, student_name, curso, item, nota, fecha, flight_id, lesson, observacion)
+                self.send_json({"status": "ok", "item": item_creado})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/items_suspendidos/eliminar_manual":
+            try:
+                import items_suspendidos_service as iss
+                data = json.loads(body.decode("utf-8"))
+                item_id = data.get("id", "")
+                iss.eliminar_item_manual(item_id)
+                self.send_json({"status": "ok", "id": item_id})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
             return
 
         # 0. Previsualización ultrarrápida de la cabecera de la 1ª página del PDF recibido y detección de páginas

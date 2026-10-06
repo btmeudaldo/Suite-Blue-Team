@@ -44,10 +44,6 @@
     "name": "Álvarez Afonso, Miguel Ángel"
   },
   {
-    "code": "RALVA",
-    "name": "Álvarez De León , Rubén"
-  },
-  {
     "code": "AALVE",
     "name": "Alves Schormann, Anderson Flavio"
   },
@@ -74,10 +70,6 @@
   {
     "code": "AAREV",
     "name": "Arevalo, Arturo"
-  },
-  {
-    "code": "LARTE",
-    "name": "Arteaga Darias, Luis Fernando"
   },
   {
     "code": "SOREN",
@@ -178,10 +170,6 @@
   {
     "code": "SPBLUE",
     "name": "Blue, Safety Pilot"
-  },
-  {
-    "code": "BTM",
-    "name": "Blue Team , Flight School"
   },
   {
     "code": "RBOET",
@@ -364,10 +352,6 @@
     "name": "Castosa De La Fuente Amor, Miguel"
   },
   {
-    "code": "ACAST",
-    "name": "Castro Menendez, Angel"
-  },
-  {
     "code": "",
     "name": "Caus Mihalache, Roberto"
   },
@@ -382,10 +366,6 @@
   {
     "code": "",
     "name": "Chesnut, John"
-  },
-  {
-    "code": "TANIA",
-    "name": "Chico Gonzalez, Tania Marlem"
   },
   {
     "code": "MCLIN",
@@ -520,10 +500,6 @@
     "name": "Diaz Deswelgh, Apeles"
   },
   {
-    "code": "CDIAZ",
-    "name": "Diaz Luis, Cesar"
-  },
-  {
     "code": "",
     "name": "Diáz Monzón, Thiago"
   },
@@ -562,10 +538,6 @@
   {
     "code": "ADOMI",
     "name": "Domínguez González, Antonio Jesús"
-  },
-  {
-    "code": "EDOMI",
-    "name": "Domínguez González, Eduardo José"
   },
   {
     "code": "",
@@ -654,10 +626,6 @@
   {
     "code": "JFERN",
     "name": "Fernández García, Javier"
-  },
-  {
-    "code": "GOICO",
-    "name": "Fernández Goicoechea, Pedro María"
   },
   {
     "code": "AFERR",
@@ -864,10 +832,6 @@
     "name": "Gonzalez, Pablo"
   },
   {
-    "code": "DUNA",
-    "name": "González, Duna"
-  },
-  {
     "code": "MARIA",
     "name": "González Argomaniz, Mariano"
   },
@@ -1056,10 +1020,6 @@
     "name": "Hernández Cano, Carlos"
   },
   {
-    "code": "NCANO",
-    "name": "Hernández Cano, Ignacio"
-  },
-  {
     "code": "CDAMI",
     "name": "Hernández Castillo, Christian Damian"
   },
@@ -1078,10 +1038,6 @@
   {
     "code": "SFERN",
     "name": "Hernández Fernández, Silvia"
-  },
-  {
-    "code": "JHERN",
-    "name": "Hernández Hernández, Joseba"
   },
   {
     "code": "EHERN",
@@ -1400,10 +1356,6 @@
     "name": "Marichal, Verónica Esmeralda"
   },
   {
-    "code": "SMAR",
-    "name": "Marichal Baez, Sergio"
-  },
-  {
     "code": "",
     "name": "Marichal Otero, Efrain"
   },
@@ -1452,16 +1404,8 @@
     "name": "Martinez De La Puente Azcarate, Asier"
   },
   {
-    "code": "GMART",
-    "name": "Martinez Esteve, Georgina"
-  },
-  {
     "code": "JMART",
     "name": "Martinez Mantolan, Javier"
-  },
-  {
-    "code": "EMASC",
-    "name": "Mascarell Cardelle, Eduardo"
   },
   {
     "code": "SMATT",
@@ -1510,10 +1454,6 @@
   {
     "code": "AMILL",
     "name": "Milla, Ayran"
-  },
-  {
-    "code": "VMILO",
-    "name": "Milosavljevic, Vladimir"
   },
   {
     "code": "",
@@ -1684,14 +1624,6 @@
     "name": "Paulin Duncan, Calvin"
   },
   {
-    "code": "APEMO",
-    "name": "Peña Monzón, Alejandro Javier"
-  },
-  {
-    "code": "MMORE",
-    "name": "Peña Moreno, Manuel"
-  },
-  {
     "code": "MPEÑA",
     "name": "Peña Padilla, Miguel"
   },
@@ -1718,10 +1650,6 @@
   {
     "code": "",
     "name": "Perera Pellegrino, Tobias Noel"
-  },
-  {
-    "code": "VTKI",
-    "name": "Pérez, Vidal Tki"
   },
   {
     "code": "",
@@ -1754,10 +1682,6 @@
   {
     "code": "FHERN",
     "name": "Pérez Hernández, Francisco Agustín"
-  },
-  {
-    "code": "CPERE",
-    "name": "Pérez Medina, Carlos"
   },
   {
     "code": "JPERE",
@@ -1944,10 +1868,6 @@
     "name": "Romanovs, Pavels"
   },
   {
-    "code": "YULI",
-    "name": "Romanyshyn Skaletska, Yuliya"
-  },
-  {
     "code": "GROMB",
     "name": "Rombaut, Guy"
   },
@@ -1974,10 +1894,6 @@
   {
     "code": "CRUBI",
     "name": "Rubiano, Carlos Gustavo"
-  },
-  {
-    "code": "YRUIZ",
-    "name": "Ruiz Calle, Yeray"
   },
   {
     "code": "",
@@ -2128,10 +2044,6 @@
     "name": "Suero Mena, Javier"
   },
   {
-    "code": "ESURI",
-    "name": "Suria Martin, Eduardo"
-  },
-  {
     "code": "VIKTO",
     "name": "Svetlichnyi, Viktor"
   },
@@ -2246,10 +2158,6 @@
   {
     "code": "JOSEF",
     "name": "Verner, Josef"
-  },
-  {
-    "code": "YVICE",
-    "name": "Vicente Pérez, Yolanda"
   },
   {
     "code": "",

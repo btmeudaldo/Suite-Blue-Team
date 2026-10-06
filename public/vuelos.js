@@ -58,7 +58,7 @@ const SEED_FLIGHTS_2809 = [
     flownHoursFormatted: '02:25',
     deviationMinutes: -5,
     deviationHoursFormatted: '-00:05',
-    status: 'ON_TIME',
+    status: 'EARLY',
     isCancelled: false,
     cancelledMinutes: 0,
     cancelledHoursFormatted: '00:00',
@@ -136,7 +136,7 @@ const SEED_FLIGHTS_2809 = [
     flownHoursFormatted: '01:55',
     deviationMinutes: -5,
     deviationHoursFormatted: '-00:05',
-    status: 'ON_TIME',
+    status: 'EARLY',
     isCancelled: false,
     cancelledMinutes: 0,
     cancelledHoursFormatted: '00:00',
@@ -162,7 +162,7 @@ const SEED_FLIGHTS_2809 = [
     flownHoursFormatted: '02:05',
     deviationMinutes: 5,
     deviationHoursFormatted: '+00:05',
-    status: 'ON_TIME',
+    status: 'DELAYED',
     isCancelled: false,
     cancelledMinutes: 0,
     cancelledHoursFormatted: '00:00',
@@ -429,10 +429,6 @@ var STUDENTS_CATALOG = [
     "name": "Álvarez Afonso, Miguel Ángel"
   },
   {
-    "code": "RALVA",
-    "name": "Álvarez De León , Rubén"
-  },
-  {
     "code": "AALVE",
     "name": "Alves Schormann, Anderson Flavio"
   },
@@ -459,10 +455,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "AAREV",
     "name": "Arevalo, Arturo"
-  },
-  {
-    "code": "LARTE",
-    "name": "Arteaga Darias, Luis Fernando"
   },
   {
     "code": "SOREN",
@@ -563,10 +555,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "SPBLUE",
     "name": "Blue, Safety Pilot"
-  },
-  {
-    "code": "BTM",
-    "name": "Blue Team , Flight School"
   },
   {
     "code": "RBOET",
@@ -749,10 +737,6 @@ var STUDENTS_CATALOG = [
     "name": "Castosa De La Fuente Amor, Miguel"
   },
   {
-    "code": "ACAST",
-    "name": "Castro Menendez, Angel"
-  },
-  {
     "code": "",
     "name": "Caus Mihalache, Roberto"
   },
@@ -767,10 +751,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "",
     "name": "Chesnut, John"
-  },
-  {
-    "code": "TANIA",
-    "name": "Chico Gonzalez, Tania Marlem"
   },
   {
     "code": "MCLIN",
@@ -905,10 +885,6 @@ var STUDENTS_CATALOG = [
     "name": "Diaz Deswelgh, Apeles"
   },
   {
-    "code": "CDIAZ",
-    "name": "Diaz Luis, Cesar"
-  },
-  {
     "code": "",
     "name": "Diáz Monzón, Thiago"
   },
@@ -947,10 +923,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "ADOMI",
     "name": "Domínguez González, Antonio Jesús"
-  },
-  {
-    "code": "EDOMI",
-    "name": "Domínguez González, Eduardo José"
   },
   {
     "code": "",
@@ -1039,10 +1011,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "JFERN",
     "name": "Fernández García, Javier"
-  },
-  {
-    "code": "GOICO",
-    "name": "Fernández Goicoechea, Pedro María"
   },
   {
     "code": "AFERR",
@@ -1249,10 +1217,6 @@ var STUDENTS_CATALOG = [
     "name": "Gonzalez, Pablo"
   },
   {
-    "code": "DUNA",
-    "name": "González, Duna"
-  },
-  {
     "code": "MARIA",
     "name": "González Argomaniz, Mariano"
   },
@@ -1441,10 +1405,6 @@ var STUDENTS_CATALOG = [
     "name": "Hernández Cano, Carlos"
   },
   {
-    "code": "NCANO",
-    "name": "Hernández Cano, Ignacio"
-  },
-  {
     "code": "CDAMI",
     "name": "Hernández Castillo, Christian Damian"
   },
@@ -1463,10 +1423,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "SFERN",
     "name": "Hernández Fernández, Silvia"
-  },
-  {
-    "code": "JHERN",
-    "name": "Hernández Hernández, Joseba"
   },
   {
     "code": "EHERN",
@@ -1785,10 +1741,6 @@ var STUDENTS_CATALOG = [
     "name": "Marichal, Verónica Esmeralda"
   },
   {
-    "code": "SMAR",
-    "name": "Marichal Baez, Sergio"
-  },
-  {
     "code": "",
     "name": "Marichal Otero, Efrain"
   },
@@ -1837,16 +1789,8 @@ var STUDENTS_CATALOG = [
     "name": "Martinez De La Puente Azcarate, Asier"
   },
   {
-    "code": "GMART",
-    "name": "Martinez Esteve, Georgina"
-  },
-  {
     "code": "JMART",
     "name": "Martinez Mantolan, Javier"
-  },
-  {
-    "code": "EMASC",
-    "name": "Mascarell Cardelle, Eduardo"
   },
   {
     "code": "SMATT",
@@ -1895,10 +1839,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "AMILL",
     "name": "Milla, Ayran"
-  },
-  {
-    "code": "VMILO",
-    "name": "Milosavljevic, Vladimir"
   },
   {
     "code": "",
@@ -2069,14 +2009,6 @@ var STUDENTS_CATALOG = [
     "name": "Paulin Duncan, Calvin"
   },
   {
-    "code": "APEMO",
-    "name": "Peña Monzón, Alejandro Javier"
-  },
-  {
-    "code": "MMORE",
-    "name": "Peña Moreno, Manuel"
-  },
-  {
     "code": "MPEÑA",
     "name": "Peña Padilla, Miguel"
   },
@@ -2103,10 +2035,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "",
     "name": "Perera Pellegrino, Tobias Noel"
-  },
-  {
-    "code": "VTKI",
-    "name": "Pérez, Vidal Tki"
   },
   {
     "code": "",
@@ -2139,10 +2067,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "FHERN",
     "name": "Pérez Hernández, Francisco Agustín"
-  },
-  {
-    "code": "CPERE",
-    "name": "Pérez Medina, Carlos"
   },
   {
     "code": "JPERE",
@@ -2329,10 +2253,6 @@ var STUDENTS_CATALOG = [
     "name": "Romanovs, Pavels"
   },
   {
-    "code": "YULI",
-    "name": "Romanyshyn Skaletska, Yuliya"
-  },
-  {
     "code": "GROMB",
     "name": "Rombaut, Guy"
   },
@@ -2359,10 +2279,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "CRUBI",
     "name": "Rubiano, Carlos Gustavo"
-  },
-  {
-    "code": "YRUIZ",
-    "name": "Ruiz Calle, Yeray"
   },
   {
     "code": "",
@@ -2513,10 +2429,6 @@ var STUDENTS_CATALOG = [
     "name": "Suero Mena, Javier"
   },
   {
-    "code": "ESURI",
-    "name": "Suria Martin, Eduardo"
-  },
-  {
     "code": "VIKTO",
     "name": "Svetlichnyi, Viktor"
   },
@@ -2631,10 +2543,6 @@ var STUDENTS_CATALOG = [
   {
     "code": "JOSEF",
     "name": "Verner, Josef"
-  },
-  {
-    "code": "YVICE",
-    "name": "Vicente Pérez, Yolanda"
   },
   {
     "code": "",
@@ -2813,13 +2721,18 @@ function registerStudentInCatalog(code, name, save = true) {
   const n = String(name || '').trim();
   if (!c && !n) return;
 
+  // Los instructores NUNCA deben añadirse al catálogo de alumnos
+  if (c && findInstructorByCode(c)) return;
+  if (n && findInstructorByName(n)) return;
+
   let existing = null;
   if (c) existing = STUDENTS_CATALOG.find(s => s.code && s.code.toUpperCase() === c);
   if (!existing && n) existing = findStudentByName(n);
 
   if (existing) {
     if (c && !existing.code) existing.code = c;
-    if (n && (!existing.name || existing.name.length < n.length)) existing.name = n;
+    // Si ya existe con el mismo código, mantener el nombre canónico (evitar duplicar o pisar con orden invertido)
+    if (n && !existing.name) existing.name = n;
   } else {
     STUDENTS_CATALOG.push({ code: c, name: n });
   }
@@ -2897,6 +2810,8 @@ function loadStoredCatalogs() {
     if (customStudents) {
       const parsed = JSON.parse(customStudents);
       for (const s of parsed) {
+        if (s.code && findInstructorByCode(s.code)) continue;
+        if (s.name && findInstructorByName(s.name)) continue;
         registerStudentInCatalog(s.code, s.name, false);
       }
     }
@@ -2907,9 +2822,29 @@ function loadStoredCatalogs() {
         registerInstructorInCatalog(i.code, i.name, false);
       }
     }
+    const customReasons = localStorage.getItem('blue_team_custom_cancellation_reasons_v1');
+    if (customReasons) {
+      const parsed = JSON.parse(customReasons);
+      for (const r of parsed) {
+        registerCancellationReason(r, false);
+      }
+    }
   } catch (e) {
     console.warn('Error loading custom catalogs from localStorage:', e);
   }
+
+  // Purgar instructores y asegurar que no haya duplicados por identificador en memoria
+  const instCodes = new Set(getAllInstructors().map(i => i.code.toUpperCase()));
+  const seenCodes = new Set();
+  STUDENTS_CATALOG = STUDENTS_CATALOG.filter(s => {
+    const sc = (s.code || '').trim().toUpperCase();
+    if (sc && instCodes.has(sc)) return false;
+    if (sc) {
+      if (seenCodes.has(sc)) return false;
+      seenCodes.add(sc);
+    }
+    return true;
+  });
 }
 
 function populateCatalogsFromReports(reports) {
@@ -2917,8 +2852,18 @@ function populateCatalogsFromReports(reports) {
   for (const rep of reports) {
     const records = rep.records || rep.matched || [];
     for (const r of records) {
+      const isRentalOrSolo = /rental|alquiler|time\s*build|solo/i.test(r.flightType || '');
       if (r.studentCode || r.studentName) registerStudentInCatalog(r.studentCode, r.studentName, false);
-      if (r.instructorCode || r.instructorName) registerInstructorInCatalog(r.instructorCode, r.instructorName, false);
+      if (r.instructorCode || r.instructorName) {
+        const isSame = (r.studentCode && r.instructorCode && r.studentCode.toUpperCase() === r.instructorCode.toUpperCase()) ||
+          (r.studentName && r.instructorName && normalizeCrewIdentity(r.studentName) === normalizeCrewIdentity(r.instructorName));
+        if (!isRentalOrSolo || !isSame) {
+          registerInstructorInCatalog(r.instructorCode, r.instructorName, false);
+        }
+      }
+      if (r.isCancelled && (r.cancellationReason || r.comments)) {
+        registerCancellationReason(r.cancellationReason || r.comments, false);
+      }
     }
   }
 }
@@ -2933,6 +2878,55 @@ function formatMinutesToH_Mm(minutes) {
 
 function formatInstructorCell(f) {
   if (!f) return '';
+  const isRentalOrSolo = /rental|alquiler|time\s*build|solo/i.test(f.flightType || '');
+
+  if (isRentalOrSolo) {
+    // En vuelos de time building / alquiler:
+    // El instructor debe salir de la lista de instructores o como pasajero, pero NUNCA poner el mismo alumno.
+    const studentCode = (f.studentCode || '').toUpperCase();
+    const studentNameNorm = normalizeCrewIdentity(f.studentName || '');
+
+    // 1. Si hay un instructor explícito en el vuelo:
+    if (f.instructorCode || f.instructorName) {
+      const instCode = (f.instructorCode || '').toUpperCase();
+      const instNameNorm = normalizeCrewIdentity(f.instructorName || '');
+      const isSameAsStudent = (instCode && studentCode && instCode === studentCode) ||
+        (instNameNorm && studentNameNorm && (instNameNorm === studentNameNorm || instNameNorm.includes(studentNameNorm) || studentNameNorm.includes(instNameNorm)));
+
+      if (!isSameAsStudent) {
+        const matchInst = (instCode && findInstructorByCode(instCode)) ||
+          (f.instructorName && findInstructorByName(f.instructorName));
+        if (matchInst) {
+          return matchInst.code || matchInst.name;
+        }
+        const isPax = (f.passengerCode && instCode === f.passengerCode.toUpperCase()) ||
+          (f.passengerName && normalizeCrewIdentity(f.passengerName) === instNameNorm);
+        if (isPax) {
+          return f.instructorCode || f.instructorName;
+        }
+      }
+    }
+
+    // 2. Si no hay instructor válido, comprobar si el pasajero es instructor o pasajero acompañante
+    if (f.passengerCode || f.passengerName) {
+      const paxCode = (f.passengerCode || '').toUpperCase();
+      const paxNameNorm = normalizeCrewIdentity(f.passengerName || '');
+      const isPaxSameAsStudent = (paxCode && studentCode && paxCode === studentCode) ||
+        (paxNameNorm && studentNameNorm && (paxNameNorm === studentNameNorm || paxNameNorm.includes(studentNameNorm) || studentNameNorm.includes(paxNameNorm)));
+
+      if (!isPaxSameAsStudent) {
+        const instPax = (paxCode && findInstructorByCode(paxCode)) ||
+          (f.passengerName && findInstructorByName(f.passengerName));
+        if (instPax) return instPax.code || instPax.name;
+        return f.passengerCode || f.passengerName;
+      }
+    }
+
+    // En time building/alquiler sin instructor de catálogo ni pasajero, el alumno NUNCA es instructor
+    return '';
+  }
+
+  // Vuelos de instrucción regular:
   if (f.instructorCode) return f.instructorCode;
   if (f.instructorName) {
     const found = findInstructorByName(f.instructorName);
@@ -2948,6 +2942,14 @@ function formatInstructorCell(f) {
     const instByPilotName = findInstructorByName(f.pilotName);
     if (instByPilotName && instByPilotName.code) return instByPilotName.code;
   }
+  if (f.passengerCode) {
+    const instByPaxCode = findInstructorByCode(f.passengerCode);
+    if (instByPaxCode && instByPaxCode.code) return instByPaxCode.code;
+  }
+  if (f.passengerName) {
+    const instByPaxName = findInstructorByName(f.passengerName);
+    if (instByPaxName && instByPaxName.code) return instByPaxName.code;
+  }
   return '';
 }
 
@@ -2962,7 +2964,7 @@ function formatAlumnoCell(f) {
     return f.studentName;
   }
   const isRentalOrSolo = /rental|alquiler|time\s*build|solo/i.test(f.flightType || '');
-  if (isRentalOrSolo) {
+  if (isRentalOrSolo || (!f.studentCode && !f.studentName)) {
     if (f.pilotCode) {
       const isInst = findInstructorByCode(f.pilotCode);
       if (!isInst) {
@@ -3005,6 +3007,62 @@ const PREDEFINED_CANCELLATION_REASONS = [
   'Reprogramación de Escuela',
   'No presentado (No show)'
 ];
+
+var CUSTOM_CANCELLATION_REASONS = [];
+
+function getAllCancellationReasons() {
+  const seen = new Set();
+  const list = [];
+  for (const r of [...PREDEFINED_CANCELLATION_REASONS, ...CUSTOM_CANCELLATION_REASONS]) {
+    const clean = String(r || '').trim();
+    if (!clean || clean.toLowerCase() === 'otro' || clean.toLowerCase() === 'cancelado') continue;
+    const lower = clean.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      list.push(clean);
+    }
+  }
+  return list;
+}
+
+function registerCancellationReason(reason, save = true) {
+  const clean = String(reason || '').trim();
+  if (!clean || clean.toLowerCase() === 'otro' || clean.toLowerCase() === 'cancelado') return;
+  const all = getAllCancellationReasons();
+  const exists = all.some(r => r.toLowerCase() === clean.toLowerCase());
+  if (!exists) {
+    CUSTOM_CANCELLATION_REASONS.push(clean);
+    if (save && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('blue_team_custom_cancellation_reasons_v1', JSON.stringify(CUSTOM_CANCELLATION_REASONS));
+      } catch {}
+    }
+    refreshCancellationReasonOptions();
+  }
+}
+
+function refreshCancellationReasonOptions() {
+  if (typeof document === 'undefined') return;
+  const select = document.getElementById('edit-cancellation-reason-select');
+  const datalist = document.getElementById('cancellation-reasons-datalist');
+  const reasons = getAllCancellationReasons();
+
+  if (select) {
+    const currentVal = select.value;
+    select.innerHTML = `
+      <option value="">-- Selecciona motivo de cancelación --</option>
+      ${reasons.map(r => `<option value="${r.replace(/"/g, '&quot;')}">${r}</option>`).join('')}
+      <option value="Otro">Otro motivo (especificar abajo)...</option>
+    `;
+    if (currentVal && (reasons.includes(currentVal) || currentVal === 'Otro')) {
+      select.value = currentVal;
+    }
+  }
+
+  if (datalist) {
+    datalist.innerHTML = reasons.map(r => `<option value="${r.replace(/"/g, '&quot;')}"></option>`).join('');
+  }
+}
 
 function formatFlightInfoCell(f) {
   if (!f) return '';
@@ -3087,6 +3145,43 @@ function normalizeDateStr(dateStr) {
     return `${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[2]}`;
   }
   return str.replace(/\//g, '-');
+}
+
+function formatDateLongSpanish(dateInput) {
+  if (!dateInput) return '';
+  let d = null;
+  if (dateInput instanceof Date) {
+    d = dateInput;
+  } else if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim();
+    const parts = trimmed.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0);
+      } else {
+        // DD-MM-YYYY or DD/MM/YYYY
+        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), 12, 0, 0);
+      }
+    } else {
+      d = new Date(trimmed);
+    }
+  }
+
+  if (!d || isNaN(d.getTime())) return String(dateInput);
+
+  const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const monthsOfYear = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const dayName = daysOfWeek[d.getDay()];
+  const dayNum = d.getDate();
+  const monthName = monthsOfYear[d.getMonth()];
+  const yearNum = d.getFullYear();
+
+  return `${dayName} ${dayNum} de ${monthName} de ${yearNum}`;
 }
 
 function parseDateStrToTimestamp(dateStr) {
@@ -3210,9 +3305,9 @@ function calculateExecutiveKpis(matchedFlights) {
       absDeviationMinutes += Math.abs(groupDev);
 
       let groupStatus = f.linkedGroupStatus;
-      if (!groupStatus) {
-        if (groupDev > 5) groupStatus = 'DELAYED';
-        else if (groupDev < -5) groupStatus = 'EARLY';
+      if (!groupStatus || (groupStatus === 'ON_TIME' && groupDev !== 0)) {
+        if (groupDev > 0) groupStatus = 'DELAYED';
+        else if (groupDev < 0) groupStatus = 'EARLY';
         else groupStatus = 'ON_TIME';
       }
 
@@ -3236,9 +3331,17 @@ function calculateExecutiveKpis(matchedFlights) {
       totalFlownMinutes += f.flownMinutes || 0;
       absDeviationMinutes += Math.abs(f.deviationMinutes || 0);
 
-      if (f.status === 'ON_TIME') {
+      const fDev = f.deviationMinutes || 0;
+      let flightStatus = f.status;
+      if (!flightStatus || (flightStatus === 'ON_TIME' && fDev !== 0)) {
+        if (fDev > 0) flightStatus = 'DELAYED';
+        else if (fDev < 0) flightStatus = 'EARLY';
+        else flightStatus = 'ON_TIME';
+      }
+
+      if (flightStatus === 'ON_TIME') {
         onTimeFlightsCount++;
-      } else if (f.status === 'EARLY') {
+      } else if (flightStatus === 'EARLY') {
         earlyFlightsCount++;
       } else {
         delayedFlightsCount++;
@@ -3287,11 +3390,20 @@ function aggregateByStudent(matchedFlights) {
 
   for (const f of matchedFlights) {
     if (!f.studentName && !f.studentCode) continue;
-    const key = f.studentName || f.studentCode;
+
+    // Normalizar identidad canónica para agrupar siempre al mismo alumno por su identificador
+    // o por resolución en el catálogo independientemente del orden en que venga escrito su nombre
+    const sCode = (f.studentCode || '').trim().toUpperCase();
+    const sName = (f.studentName || '').trim();
+    const stu = (sCode ? findStudentByCode(sCode) : null) || (sName ? findStudentByName(sName) : null);
+    const resolvedCode = stu?.code || sCode;
+    const resolvedName = stu?.name || sName;
+    const key = resolvedCode || resolvedName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
     if (!map.has(key)) {
       map.set(key, {
-        studentName: f.studentName || '',
-        studentCode: f.studentCode || '',
+        studentName: resolvedName,
+        studentCode: resolvedCode,
         flightsCount: 0,
         cancelledFlightsCount: 0,
         totalScheduledMinutes: 0,
@@ -3303,7 +3415,10 @@ function aggregateByStudent(matchedFlights) {
     const entry = map.get(key);
     entry.flightsCount++;
     entry.flights.push(f);
-    if (!entry.studentCode && f.studentCode) entry.studentCode = f.studentCode;
+    if (!entry.studentCode && resolvedCode) entry.studentCode = resolvedCode;
+    if ((!entry.studentName || entry.studentName.length < resolvedName.length) && resolvedName) {
+      entry.studentName = resolvedName;
+    }
 
     if (f.isCancelled || f.status === 'CANCELLED') {
       entry.cancelledFlightsCount++;
@@ -3330,7 +3445,7 @@ function aggregateByStudent(matchedFlights) {
       totalScheduledHoursFormatted: formatMinutesToHhMm(s.totalScheduledMinutes),
       totalFlownHoursFormatted: formatMinutesToHhMm(s.totalFlownMinutes),
       totalDeviationFormatted: `${totalDeviationMinutes > 0 ? '+' : ''}${formatMinutesToHhMm(totalDeviationMinutes)}`,
-      status: Math.abs(totalDeviationMinutes) <= 5 ? 'ON_TIME' : totalDeviationMinutes > 5 ? 'DELAYED' : 'EARLY'
+      status: totalDeviationMinutes === 0 ? 'ON_TIME' : totalDeviationMinutes > 0 ? 'DELAYED' : 'EARLY'
     };
   });
 }
@@ -3340,14 +3455,41 @@ function aggregateByInstructor(matchedFlights) {
   const processedGroups = new Set();
 
   for (const f of matchedFlights) {
-    const instName = f.instructorName;
-    const instCode = f.instructorCode;
+    const isRentalOrSolo = /rental|alquiler|time\s*build|solo/i.test(f.flightType || '');
+    let instName = f.instructorName;
+    let instCode = f.instructorCode;
+
+    if (isRentalOrSolo) {
+      // En time building/alquiler el instructor sale de la lista de instructores o como pasajero, nunca el alumno
+      const isStudent = (f.studentCode && instCode && f.studentCode.toUpperCase() === instCode.toUpperCase()) ||
+        (f.studentName && instName && normalizeCrewIdentity(f.studentName) === normalizeCrewIdentity(instName));
+      if (isStudent || (!instName && !instCode)) {
+        instName = f.passengerName || '';
+        instCode = f.passengerCode || '';
+      }
+      if (instName || instCode) {
+        const isRealInst = findInstructorByName(instName) || findInstructorByCode(instCode);
+        const isPax = (f.passengerName && instName === f.passengerName) || (f.passengerCode && instCode === f.passengerCode);
+        if (!isRealInst && !isPax) {
+          instName = '';
+          instCode = '';
+        }
+      }
+    }
+
     if (!instName && !instCode) continue;
-    const key = instName || instCode;
+
+    const iCode = (instCode || '').trim().toUpperCase();
+    const iName = (instName || '').trim();
+    const inst = (iCode ? findInstructorByCode(iCode) : null) || (iName ? findInstructorByName(iName) : null);
+    const resolvedCode = inst?.code || iCode;
+    const resolvedName = inst?.name || iName;
+    const key = resolvedCode || resolvedName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
     if (!map.has(key)) {
       map.set(key, {
-        instructorName: instName || '',
-        instructorCode: instCode || '',
+        instructorName: resolvedName,
+        instructorCode: resolvedCode,
         flightsCount: 0,
         cancelledFlightsCount: 0,
         totalScheduledMinutes: 0,
@@ -3359,7 +3501,10 @@ function aggregateByInstructor(matchedFlights) {
     const entry = map.get(key);
     entry.flightsCount++;
     entry.flights.push(f);
-    if (!entry.instructorCode && instCode) entry.instructorCode = instCode;
+    if (!entry.instructorCode && resolvedCode) entry.instructorCode = resolvedCode;
+    if ((!entry.instructorName || entry.instructorName.length < resolvedName.length) && resolvedName) {
+      entry.instructorName = resolvedName;
+    }
 
     if (f.isCancelled || f.status === 'CANCELLED') {
       entry.cancelledFlightsCount++;
@@ -3386,7 +3531,7 @@ function aggregateByInstructor(matchedFlights) {
       totalScheduledHoursFormatted: formatMinutesToHhMm(i.totalScheduledMinutes),
       totalFlownHoursFormatted: formatMinutesToHhMm(i.totalFlownMinutes),
       totalDeviationFormatted: `${totalDeviationMinutes > 0 ? '+' : ''}${formatMinutesToHhMm(totalDeviationMinutes)}`,
-      status: Math.abs(totalDeviationMinutes) <= 5 ? 'ON_TIME' : totalDeviationMinutes > 5 ? 'DELAYED' : 'EARLY'
+      status: totalDeviationMinutes === 0 ? 'ON_TIME' : totalDeviationMinutes > 0 ? 'DELAYED' : 'EARLY'
     };
   });
 }
@@ -3445,7 +3590,7 @@ function aggregateByPair(matchedFlights) {
       totalScheduledHoursFormatted: formatMinutesToHhMm(p.totalScheduledMinutes),
       totalFlownHoursFormatted: formatMinutesToHhMm(p.totalFlownMinutes),
       totalDeviationFormatted: `${totalDeviationMinutes > 0 ? '+' : ''}${formatMinutesToHhMm(totalDeviationMinutes)}`,
-      status: Math.abs(totalDeviationMinutes) <= 5 ? 'ON_TIME' : totalDeviationMinutes > 5 ? 'DELAYED' : 'EARLY'
+      status: totalDeviationMinutes === 0 ? 'ON_TIME' : totalDeviationMinutes > 0 ? 'DELAYED' : 'EARLY'
     };
   });
 }
@@ -3607,21 +3752,49 @@ function parseProgramadoExcel(input) {
 
     // En Private Radar, para alquiler / time building / solo o cuando el instructor va como pasajero:
     const isRentalOrSolo = /rental|alquiler|time\s*build|solo/i.test(flightType);
-    if (!studentName && pilotName && (isRentalOrSolo || passengerName)) {
-      studentName = pilotName;
-      studentCode = pilotCode;
-    }
-    if (!instructorName && passengerName) {
-      instructorName = passengerName;
-      instructorCode = passengerCode;
-    }
+    if (isRentalOrSolo) {
+      if (!studentName && pilotName) {
+        studentName = pilotName;
+        studentCode = pilotCode;
+      }
+      if (instructorName && (instructorName === studentName || (instructorCode && instructorCode === studentCode))) {
+        instructorName = passengerName || '';
+        instructorCode = passengerCode || '';
+      }
+      if (!instructorName && passengerName) {
+        instructorName = passengerName;
+        instructorCode = passengerCode;
+      }
+      if (instructorName || instructorCode) {
+        const matchInst = (instructorCode && findInstructorByCode(instructorCode)) ||
+          (instructorName && findInstructorByName(instructorName));
+        const isPax = (passengerName && instructorName === passengerName) ||
+          (passengerCode && instructorCode === passengerCode);
+        if (matchInst) {
+          instructorName = matchInst.name;
+          instructorCode = matchInst.code;
+        } else if (!isPax) {
+          instructorName = '';
+          instructorCode = '';
+        }
+      }
+    } else {
+      if (!studentName && pilotName && passengerName) {
+        studentName = pilotName;
+        studentCode = pilotCode;
+      }
+      if (!instructorName && passengerName) {
+        instructorName = passengerName;
+        instructorCode = passengerCode;
+      }
 
-    // Si no hay instructor explícito pero el piloto o pasajero es instructor de la escuela:
-    if (!instructorName && !instructorCode && pilotName) {
-      const matchInstByPilot = findInstructorByName(pilotName) || findInstructorByCode(pilotCode);
-      if (matchInstByPilot) {
-        instructorName = matchInstByPilot.name;
-        instructorCode = matchInstByPilot.code;
+      // Si no hay instructor explícito pero el piloto o pasajero es instructor de la escuela:
+      if (!instructorName && !instructorCode && pilotName) {
+        const matchInstByPilot = findInstructorByName(pilotName) || findInstructorByCode(pilotCode);
+        if (matchInstByPilot) {
+          instructorName = matchInstByPilot.name;
+          instructorCode = matchInstByPilot.code;
+        }
       }
     }
 
@@ -3655,6 +3828,8 @@ function parseProgramadoExcel(input) {
       studentCode,
       instructorName,
       instructorCode,
+      passengerName,
+      passengerCode,
       lessons: cleanStr(row[colIndex.lessons]),
       comments: cleanStr(row[colIndex.comments]),
       status: cleanStr(row[colIndex.status]),
@@ -3794,6 +3969,23 @@ function parseVoladoExcel(input) {
         instructorName = '';
         instructorCode = '';
       }
+      // En time building no poner el mismo alumno como instructor
+      if (instructorName && (instructorName === studentName || (instructorCode && instructorCode === studentCode))) {
+        instructorName = '';
+        instructorCode = '';
+      }
+      // El instructor debe salir del catálogo de instructores
+      if (instructorName || instructorCode) {
+        const matchInst = (instructorCode && findInstructorByCode(instructorCode)) ||
+          (instructorName && findInstructorByName(instructorName));
+        if (matchInst) {
+          instructorName = matchInst.name;
+          instructorCode = matchInst.code;
+        } else {
+          instructorName = '';
+          instructorCode = '';
+        }
+      }
     }
 
     if (instructorCode && !instructorName) {
@@ -3885,9 +4077,9 @@ function matchFlightsAndCalculateDeviations(bookings, flights) {
     let status = 'ON_TIME';
     if (isCancelled) {
       status = 'CANCELLED';
-    } else if (deviationMinutes > 5) {
+    } else if (deviationMinutes > 0) {
       status = 'DELAYED';
-    } else if (deviationMinutes < -5) {
+    } else if (deviationMinutes < 0) {
       status = 'EARLY';
     }
 
@@ -3907,18 +4099,39 @@ function matchFlightsAndCalculateDeviations(bookings, flights) {
       if (stu) studentCode = stu.code;
     }
 
-    // Auto-completar indicativo de instructor desde catálogo o nombre si falta
-    if (instructorCode && !instructorName) {
-      const inst = findInstructorByCode(instructorCode);
-      if (inst) instructorName = inst.name;
-    } else if (instructorName && !instructorCode) {
-      const inst = findInstructorByName(instructorName);
-      if (inst) instructorCode = inst.code;
-    } else if (!instructorName && !instructorCode && pilotName) {
-      const inst = findInstructorByName(pilotName) || findInstructorByCode(pilotCode);
-      if (inst) {
-        instructorName = inst.name;
-        instructorCode = inst.code;
+    const isRentalFlight = /rental|alquiler|time\s*build|solo/i.test(booking.flightType || matchedLegs[0]?.flightType || '');
+
+    if (isRentalFlight) {
+      // En time building el alumno es siempre alumno, nunca instructor
+      if (instructorName && (instructorName === studentName || (instructorCode && instructorCode === studentCode))) {
+        instructorName = '';
+        instructorCode = '';
+      }
+      if (instructorName || instructorCode) {
+        const matchInst = (instructorCode && findInstructorByCode(instructorCode)) ||
+          (instructorName && findInstructorByName(instructorName));
+        if (matchInst) {
+          instructorName = matchInst.name;
+          instructorCode = matchInst.code;
+        } else {
+          instructorName = '';
+          instructorCode = '';
+        }
+      }
+    } else {
+      // Auto-completar indicativo de instructor desde catálogo o nombre si falta (solo instrucción regular)
+      if (instructorCode && !instructorName) {
+        const inst = findInstructorByCode(instructorCode);
+        if (inst) instructorName = inst.name;
+      } else if (instructorName && !instructorCode) {
+        const inst = findInstructorByName(instructorName);
+        if (inst) instructorCode = inst.code;
+      } else if (!instructorName && !instructorCode && pilotName) {
+        const inst = findInstructorByName(pilotName) || findInstructorByCode(pilotCode);
+        if (inst) {
+          instructorName = inst.name;
+          instructorCode = inst.code;
+        }
       }
     }
 
@@ -4019,6 +4232,108 @@ function matchFlightsAndCalculateDeviations(bookings, flights) {
   return results;
 }
 
+// Inicializa vuelos a partir de reservas programadas (cuando no se dispone de archivo de Horas Voladas de Private Radar)
+function createFlightsFromProgramado(bookings, prefillWithSched = true) {
+  const results = [];
+  for (const b of bookings) {
+    const scheduledMinutes = b.scheduledMinutes || 0;
+    const flownMinutes = prefillWithSched ? scheduledMinutes : 0;
+    const deviationMinutes = 0;
+    const status = 'ON_TIME';
+
+    let studentName = b.studentName || '';
+    let studentCode = b.studentCode || '';
+    let instructorName = b.instructorName || '';
+    let instructorCode = b.instructorCode || '';
+    let pilotName = b.pilotName || '';
+    let pilotCode = b.pilotCode || '';
+
+    if (studentCode && !studentName) {
+      const stu = findStudentByCode(studentCode);
+      if (stu) studentName = stu.name;
+    } else if (studentName && !studentCode) {
+      const stu = findStudentByName(studentName);
+      if (stu) studentCode = stu.code;
+    }
+
+    const isRentalFlight = /rental|alquiler|time\s*build|solo/i.test(b.flightType || '');
+
+    if (isRentalFlight) {
+      if (instructorName && (instructorName === studentName || (instructorCode && instructorCode === studentCode))) {
+        instructorName = '';
+        instructorCode = '';
+      }
+      if (instructorName || instructorCode) {
+        const matchInst = (instructorCode && findInstructorByCode(instructorCode)) ||
+          (instructorName && findInstructorByName(instructorName));
+        if (matchInst) {
+          instructorName = matchInst.name;
+          instructorCode = matchInst.code;
+        } else {
+          instructorName = '';
+          instructorCode = '';
+        }
+      }
+    } else {
+      if (instructorCode && !instructorName) {
+        const inst = findInstructorByCode(instructorCode);
+        if (inst) instructorName = inst.name;
+      } else if (instructorName && !instructorCode) {
+        const inst = findInstructorByName(instructorName);
+        if (inst) instructorCode = inst.code;
+      } else if (!instructorName && !instructorCode && pilotName) {
+        const inst = findInstructorByName(pilotName) || findInstructorByCode(pilotCode);
+        if (inst) {
+          instructorName = inst.name;
+          instructorCode = inst.code;
+        }
+      }
+    }
+
+    if (studentCode || studentName) registerStudentInCatalog(studentCode, studentName, false);
+    if (!isRentalFlight && (instructorCode || instructorName)) {
+      registerInstructorInCatalog(instructorCode, instructorName, false);
+    }
+
+    results.push({
+      bookingId: b.bookingId,
+      flightNumber: b.flightNumber || 'S/N',
+      registration: b.registration || 'EC-???',
+      flightType: b.flightType || 'Instruction',
+      studentName,
+      studentCode,
+      instructorName,
+      instructorCode,
+      pilotName,
+      pilotCode,
+      route: b.route || 'GCXO -> GCXO',
+      legsCount: 1,
+      legs: [],
+      dateBegin: b.dateBegin,
+      dateEnd: b.dateEnd,
+      scheduledMinutes,
+      scheduledHoursFormatted: formatMinutesToHhMm(scheduledMinutes),
+      scheduledHoursDecimal: minutesToDecimalHours(scheduledMinutes),
+      flownMinutes,
+      flownHoursFormatted: formatMinutesToHhMm(flownMinutes),
+      flownHoursDecimal: minutesToDecimalHours(flownMinutes),
+      deviationMinutes,
+      deviationHoursFormatted: '00:00',
+      deviationHoursDecimal: 0,
+      status,
+      isCancelled: false,
+      cancellationReason: '',
+      cancelledMinutes: 0,
+      cancelledHoursFormatted: '00:00',
+      lessons: b.lessons || '',
+      comments: b.comments || '',
+      verified: false,
+      isManualAtl: true
+    });
+  }
+  return results;
+}
+
 // =========================================================
 // GESTION DE ALMACENAMIENTO LOCAL (LOCALSTORAGE)
 // =========================================================
@@ -4089,30 +4404,81 @@ function computeCumulativeHistory() {
     for (const f of records) {
       if (f.isCancelled || f.status === 'CANCELLED') continue;
 
+      const isRentalOrSolo = /rental|alquiler|time\s*build|solo/i.test(f.flightType || '');
+
       // Instructor
-      const iName = f.instructorName || f.pilotName;
-      const iCode = f.instructorCode || f.pilotCode;
+      let iName = f.instructorName;
+      let iCode = f.instructorCode;
+
+      if (isRentalOrSolo) {
+        // En time building el alumno NUNCA es instructor
+        const isStudent = (f.studentCode && iCode && f.studentCode.toUpperCase() === iCode.toUpperCase()) ||
+          (f.studentName && iName && normalizeCrewIdentity(f.studentName) === normalizeCrewIdentity(iName));
+        if (isStudent || (!iName && !iCode)) {
+          iName = f.passengerName || '';
+          iCode = f.passengerCode || '';
+        }
+        if (iName || iCode) {
+          const isRealInst = findInstructorByName(iName) || findInstructorByCode(iCode);
+          const isPax = (f.passengerName && iName === f.passengerName) || (f.passengerCode && iCode === f.passengerCode);
+          if (!isRealInst && !isPax) {
+            iName = '';
+            iCode = '';
+          }
+        }
+      } else {
+        if (!iName && !iCode && f.pilotName && !findStudentByName(f.pilotName)) {
+          iName = f.pilotName;
+          iCode = f.pilotCode || '';
+        }
+      }
+
       if (iName || iCode) {
-        const key = iName || iCode;
+        const cleanICode = (iCode || '').trim().toUpperCase();
+        const cleanIName = (iName || '').trim();
+        const inst = (cleanICode ? findInstructorByCode(cleanICode) : null) || (cleanIName ? findInstructorByName(cleanIName) : null);
+        const resolvedCode = inst?.code || cleanICode;
+        const resolvedName = inst?.name || cleanIName;
+        const key = resolvedCode || resolvedName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
         if (!instMap.has(key)) {
-          instMap.set(key, { instructor_name: iName || '', instructor_code: iCode || '', flights_count: 0, total_deviation_min: 0 });
+          instMap.set(key, { instructor_name: resolvedName, instructor_code: resolvedCode, flights_count: 0, total_deviation_min: 0 });
         }
         const item = instMap.get(key);
         item.flights_count++;
         item.total_deviation_min += f.deviationMinutes || 0;
-        if (!item.instructor_code && iCode) item.instructor_code = iCode;
+        if (!item.instructor_code && resolvedCode) item.instructor_code = resolvedCode;
+        if ((!item.instructor_name || item.instructor_name.length < resolvedName.length) && resolvedName) {
+          item.instructor_name = resolvedName;
+        }
       }
 
-      // Alumno
-      if (f.studentName || f.studentCode) {
-        const key = f.studentName || f.studentCode;
+      // Alumno: en time building o alquiler, el piloto es siempre alumno
+      let sName = f.studentName;
+      let sCode = f.studentCode;
+      if (isRentalOrSolo && !sName && !sCode) {
+        sName = f.pilotName || '';
+        sCode = f.pilotCode || '';
+      }
+
+      if (sName || sCode) {
+        const cleanSCode = (sCode || '').trim().toUpperCase();
+        const cleanSName = (sName || '').trim();
+        const stu = (cleanSCode ? findStudentByCode(cleanSCode) : null) || (cleanSName ? findStudentByName(cleanSName) : null);
+        const resolvedCode = stu?.code || cleanSCode;
+        const resolvedName = stu?.name || cleanSName;
+        const key = resolvedCode || resolvedName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
         if (!studMap.has(key)) {
-          studMap.set(key, { student_name: f.studentName || '', student_code: f.studentCode || '', flights_count: 0, total_deviation_min: 0 });
+          studMap.set(key, { student_name: resolvedName, student_code: resolvedCode, flights_count: 0, total_deviation_min: 0 });
         }
         const item = studMap.get(key);
         item.flights_count++;
         item.total_deviation_min += f.deviationMinutes || 0;
-        if (!item.student_code && f.studentCode) item.student_code = f.studentCode;
+        if (!item.student_code && resolvedCode) item.student_code = resolvedCode;
+        if ((!item.student_name || item.student_name.length < resolvedName.length) && resolvedName) {
+          item.student_name = resolvedName;
+        }
       }
     }
   }
@@ -4267,6 +4633,7 @@ function openFlightEditModal(flightIndex) {
   document.getElementById('edit-flown-time').value = flight?.isCancelled ? '00:00' : (flight?.flownHoursFormatted || '01:30');
   const isCancelled = Boolean(flight?.isCancelled);
   document.getElementById('edit-is-cancelled').checked = isCancelled;
+  refreshCancellationReasonOptions();
   const reasonInput = document.getElementById('edit-cancellation-reason');
   const reasonSelect = document.getElementById('edit-cancellation-reason-select');
   const currentReason = flight?.cancellationReason || (isCancelled ? (flight?.comments || '') : '');
@@ -4274,7 +4641,7 @@ function openFlightEditModal(flightIndex) {
     reasonInput.value = currentReason;
   }
   if (reasonSelect) {
-    if (PREDEFINED_CANCELLATION_REASONS.includes(currentReason)) {
+    if (getAllCancellationReasons().includes(currentReason)) {
       reasonSelect.value = currentReason;
     } else if (currentReason) {
       reasonSelect.value = 'Otro';
@@ -4296,6 +4663,17 @@ function openFlightEditModal(flightIndex) {
   }
 
   modal.style.display = 'flex';
+  setTimeout(() => {
+    if (isNew) {
+      document.getElementById('edit-flight-num')?.focus();
+    } else {
+      const flownInput = document.getElementById('edit-flown-time');
+      if (flownInput && !flownInput.disabled) {
+        flownInput.focus();
+        flownInput.select();
+      }
+    }
+  }, 60);
 }
 
 function closeFlightEditModal() {
@@ -4304,11 +4682,20 @@ function closeFlightEditModal() {
   currentEditingFlightIndex = -1;
 }
 
+function recoverCancelledFlightWithAtl(flightIdx) {
+  openFlightEditModal(flightIdx);
+  const cb = document.getElementById('edit-is-cancelled');
+  if (cb && cb.checked) {
+    cb.checked = false;
+    handleCancelledToggle(cb);
+  }
+}
+
 function handleCancellationReasonSelect(val) {
   const reasonInput = document.getElementById('edit-cancellation-reason');
   if (!reasonInput) return;
   if (!val || val === 'Otro') {
-    if (val === 'Otro' && (!reasonInput.value || PREDEFINED_CANCELLATION_REASONS.includes(reasonInput.value))) {
+    if (val === 'Otro' && (!reasonInput.value || getAllCancellationReasons().includes(reasonInput.value))) {
       reasonInput.value = '';
     }
     reasonInput.focus();
@@ -4322,7 +4709,15 @@ function handleCancelledToggle(checkbox) {
   if (flownInput) {
     flownInput.disabled = checkbox.checked;
     flownInput.style.opacity = checkbox.checked ? '0.5' : '1';
-    if (checkbox.checked) flownInput.value = '00:00';
+    if (checkbox.checked) {
+      flownInput.value = '00:00';
+    } else {
+      const schedVal = document.getElementById('edit-sched-time')?.value || '01:30';
+      if (!flownInput.value || flownInput.value === '00:00') {
+        flownInput.value = schedVal;
+      }
+      setTimeout(() => { flownInput.focus(); flownInput.select(); }, 50);
+    }
   }
   const reasonContainer = document.getElementById('edit-cancellation-reason-container');
   if (reasonContainer) {
@@ -4354,6 +4749,9 @@ function saveFlightEditModal() {
   const cancellationReason = isCancelled
     ? ((document.getElementById('edit-cancellation-reason')?.value || document.getElementById('edit-cancellation-reason-select')?.value || '').trim())
     : '';
+  if (isCancelled && cancellationReason) {
+    registerCancellationReason(cancellationReason);
+  }
   const lessons = (document.getElementById('edit-lessons').value || '').trim();
   let comments = (document.getElementById('edit-comments').value || '').trim();
   if (isCancelled && cancellationReason && (!comments || comments === 'Cancelado')) {
@@ -4380,9 +4778,9 @@ function saveFlightEditModal() {
   let status = 'ON_TIME';
   if (isCancelled) {
     status = 'CANCELLED';
-  } else if (deviationMinutes > 5) {
+  } else if (deviationMinutes > 0) {
     status = 'DELAYED';
-  } else if (deviationMinutes < -5) {
+  } else if (deviationMinutes < 0) {
     status = 'EARLY';
   }
 
@@ -4419,7 +4817,8 @@ function saveFlightEditModal() {
     cancelledHoursFormatted: isCancelled ? formatMinutesToHhMm(schedMinutes) : '00:00',
     lessons,
     comments,
-    verified: existing.verified ?? true
+    verified: existing.verified ?? true,
+    isManualAtl: true
   };
 
   if (isNew) {
@@ -4525,9 +4924,9 @@ function openLinkFlightsModal() {
     const diffEl = document.getElementById('link-modal-diff-preview');
     if (diffEl) {
       const isRed = sched > totalFlownMin;
-      const isGreen = totalFlownMin > sched;
+      const isYellow = totalFlownMin > sched;
       diffEl.textContent = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}${formatMinutesToHhMm(Math.abs(diff))} h`;
-      diffEl.style.color = isRed ? '#f43f5e' : isGreen ? '#10b981' : '#38bdf8';
+      diffEl.style.color = isRed ? '#f43f5e' : isYellow ? '#f59e0b' : '#10b981';
     }
   }
 
@@ -4558,8 +4957,8 @@ function confirmLinkFlights() {
 
   const groupDiffMin = totalFlownMin - schedMinutes;
   let groupStatus = 'ON_TIME';
-  if (groupDiffMin > 5) groupStatus = 'DELAYED';
-  else if (groupDiffMin < -5) groupStatus = 'EARLY';
+  if (groupDiffMin > 0) groupStatus = 'DELAYED';
+  else if (groupDiffMin < 0) groupStatus = 'EARLY';
 
   // Determinar como líder el vuelo con reserva programada formal o el primero
   let leadIdx = indices.find(idx => {
@@ -4623,7 +5022,7 @@ function unlinkFlights(groupId) {
       const dev = f.isCancelled ? 0 : flown - sched;
       f.deviationMinutes = dev;
       f.deviationHoursFormatted = `${dev > 0 ? '+' : ''}${formatMinutesToHhMm(dev)}`;
-      f.status = f.isCancelled ? 'CANCELLED' : (dev > 5 ? 'DELAYED' : (dev < -5 ? 'EARLY' : 'ON_TIME'));
+      f.status = f.isCancelled ? 'CANCELLED' : (dev > 0 ? 'DELAYED' : (dev < 0 ? 'EARLY' : 'ON_TIME'));
     }
   }
 
@@ -4729,6 +5128,103 @@ async function processUploadedExcels(progBuffer, volBuffer) {
     vuelosState.isProcessing = false;
     renderVuelosUI();
   }
+}
+
+// Procesa únicamente el archivo Excel de programación (modo ATL / entrada manual)
+async function processUploadedProgramadoOnly(progBuffer) {
+  vuelosState.isProcessing = true;
+  renderVuelosUI();
+
+  try {
+    const bookings = parseProgramadoExcel(progBuffer);
+    if (!bookings || bookings.length === 0) {
+      throw new Error('No se encontraron vuelos programados válidos en el archivo.');
+    }
+
+    const prefill = confirm(
+      '¿Deseas pre-cargar las horas de bloque con el tiempo programado?\n\n' +
+      '• ACEPTAR (Recomendado): Se pre-rellenan con las horas programadas. Ideal si la mayoría voló puntual y solo vas a modificar los vuelos que tuvieron variación (como los vuelos VFRN) o cancelaciones usando el ATL.\n\n' +
+      '• CANCELAR: Se inicializan a 00:00 para introducir todos los tiempos de bloque manualmente desde el ATL.'
+    );
+
+    const allFlights = createFlightsFromProgramado(bookings, prefill);
+
+    // Agrupar por día calendario
+    const daysMap = new Map();
+    for (const f of allFlights) {
+      const flightDate = f.dateBegin || new Date();
+      const dStr = formatDateToDdMmYyyy(flightDate);
+      const key = normalizeDateStr(dStr);
+      if (!daysMap.has(key)) {
+        daysMap.set(key, { dateStr: dStr, dateKey: key, flights: [] });
+      }
+      daysMap.get(key).flights.push(f);
+    }
+
+    const sortedEntries = Array.from(daysMap.values()).sort(
+      (a, b) => parseDateStrToTimestamp(b.dateKey) - parseDateStrToTimestamp(a.dateKey)
+    );
+
+    for (const entry of sortedEntries) {
+      const dayMatched = entry.flights;
+      saveLocalReport({
+        report_date: entry.dateKey,
+        matched: dayMatched,
+        kpis: calculateExecutiveKpis(dayMatched),
+        studentStats: aggregateByStudent(dayMatched),
+        instructorStats: aggregateByInstructor(dayMatched),
+        pairStats: aggregateByPair(dayMatched)
+      });
+    }
+
+    const latest = sortedEntries[0];
+    vuelosState.matchedFlights = latest.flights;
+    vuelosState.kpis = calculateExecutiveKpis(latest.flights);
+    vuelosState.studentStats = aggregateByStudent(latest.flights);
+    vuelosState.instructorStats = aggregateByInstructor(latest.flights);
+    vuelosState.pairStats = aggregateByPair(latest.flights);
+    vuelosState.reportDate = latest.dateKey;
+    vuelosState.showDropzone = false;
+    vuelosState.savedReports = getLocalReportsList();
+    vuelosState.cumulativeData = computeCumulativeHistory();
+
+    vuelosState.saveNotice = `¡Cargados ${latest.flights.length} vuelos programados sin archivo de volado! Puedes editar el bloque real desde el ATL haciendo clic en Bloque o en ✏️.`;
+    setTimeout(() => { vuelosState.saveNotice = ''; renderVuelosUI(); }, 5000);
+  } catch (err) {
+    alert(`Error al procesar Excel de programación: ${err.message}`);
+  } finally {
+    vuelosState.isProcessing = false;
+    renderVuelosUI();
+  }
+}
+
+function triggerProcessProgOnly() {
+  if (!vuelosState.progFile) {
+    const fileInput = document.getElementById('input-excel-prog');
+    if (fileInput) fileInput.click();
+    return;
+  }
+  const readerP = new FileReader();
+  readerP.onload = () => {
+    processUploadedProgramadoOnly(readerP.result);
+  };
+  readerP.readAsArrayBuffer(vuelosState.progFile);
+}
+
+function triggerProcessBothExcels() {
+  if (!vuelosState.progFile || !vuelosState.volFile) {
+    alert('Por favor selecciona ambos archivos (Programado y Horas Voladas).');
+    return;
+  }
+  const readerP = new FileReader();
+  const readerV = new FileReader();
+  readerP.onload = () => {
+    readerV.onload = () => {
+      processUploadedExcels(readerP.result, readerV.result);
+    };
+    readerV.readAsArrayBuffer(vuelosState.volFile);
+  };
+  readerP.readAsArrayBuffer(vuelosState.progFile);
 }
 
 // =========================================================
@@ -5000,6 +5496,15 @@ async function exportVuelosPdf() {
             data.cell.styles.textColor = [244, 63, 94];
             data.cell.styles.fontStyle = 'bold';
           }
+        } else {
+          if (data.column.index === 7) {
+            const dev = rawRow?.deviationMinutes || 0;
+            if (dev < 0) {
+              data.cell.styles.textColor = [239, 68, 68];
+            } else if (dev > 0) {
+              data.cell.styles.textColor = [217, 119, 6];
+            }
+          }
         }
       }
     }
@@ -5103,7 +5608,7 @@ function getDifferencesFlightsForExport() {
       const totalSchedMin = f.linkedGroupTotalScheduledMinutes || groupFlights[0].scheduledMinutes || 0;
       const diffMin = totalFlownMin - totalSchedMin;
 
-      if (Math.abs(diffMin) > 5) {
+      if (diffMin !== 0) {
         items.push({
           isGroup: true,
           groupId: f.linkedGroupId,
@@ -5114,7 +5619,7 @@ function getDifferencesFlightsForExport() {
         });
       }
     } else {
-      if (Math.abs(f.deviationMinutes || 0) > 5) {
+      if ((f.deviationMinutes || 0) !== 0) {
         items.push({
           isGroup: false,
           flight: f,
@@ -5140,10 +5645,11 @@ function renderDifferencesTableToCanvas(items) {
     alumno: 145
   };
   const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0); // 865px
+  const dateHeaderHeight = 38;
   const headerHeight = 42;
   const rowHeight = 36;
   const totalLegs = items.reduce((sum, it) => sum + (it.isGroup ? it.flights.length : 1), 0);
-  const totalHeight = headerHeight + (totalLegs * rowHeight);
+  const totalHeight = dateHeaderHeight + headerHeight + (totalLegs * rowHeight);
 
   const canvas = document.createElement('canvas');
   const dpr = 2; // High-DPI 2x Retina scale
@@ -5160,6 +5666,31 @@ function renderDifferencesTableToCanvas(items) {
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 1.5;
   ctx.strokeRect(0, 0, totalWidth, totalHeight);
+
+  // Fila superior: Fecha en una sola línea (ej. Viernes 9 de Octubre de 2026)
+  let rawDate = vuelosState.reportDate;
+  if (!rawDate && items.length > 0) {
+    const firstFlight = items[0].isGroup ? items[0].flights[0] : items[0].flight;
+    rawDate = firstFlight?.dateBegin || firstFlight?.date || '';
+  }
+  const dateFormatted = formatDateLongSpanish(rawDate || new Date());
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, totalWidth, dateHeaderHeight);
+
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#0f172a';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(dateFormatted, totalWidth / 2, dateHeaderHeight / 2);
+
+  // Línea horizontal bajo la fecha
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, dateHeaderHeight);
+  ctx.lineTo(totalWidth, dateHeaderHeight);
+  ctx.stroke();
 
   const cols = [
     { key: 'matricula', label: 'Matricula', width: colWidths.matricula, align: 'left' },
@@ -5179,7 +5710,7 @@ function renderDifferencesTableToCanvas(items) {
     curX += c.width;
   });
 
-  // Cabecera
+  // Cabecera de columnas
   ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
   ctx.fillStyle = '#000000';
   ctx.textBaseline = 'middle';
@@ -5187,36 +5718,39 @@ function renderDifferencesTableToCanvas(items) {
   cols.forEach(c => {
     const textX = c.align === 'center' ? c.x + c.width / 2 : c.x + 12;
     ctx.textAlign = c.align === 'center' ? 'center' : 'left';
-    ctx.fillText(c.label, textX, headerHeight / 2);
+    ctx.fillText(c.label, textX, dateHeaderHeight + headerHeight / 2);
     if (c.x + c.width < totalWidth) {
       ctx.beginPath();
-      ctx.moveTo(c.x + c.width, 0);
-      ctx.lineTo(c.x + c.width, headerHeight);
+      ctx.moveTo(c.x + c.width, dateHeaderHeight);
+      ctx.lineTo(c.x + c.width, dateHeaderHeight + headerHeight);
       ctx.stroke();
     }
   });
 
-  // Línea horizontal bajo la cabecera
+  // Línea horizontal bajo la cabecera de columnas
   ctx.beginPath();
-  ctx.moveTo(0, headerHeight);
-  ctx.lineTo(totalWidth, headerHeight);
+  ctx.moveTo(0, dateHeaderHeight + headerHeight);
+  ctx.lineTo(totalWidth, dateHeaderHeight + headerHeight);
   ctx.stroke();
 
   // Dibujar Filas de Datos
-  let currentY = headerHeight;
+  let currentY = dateHeaderHeight + headerHeight;
 
   items.forEach(it => {
     if (!it.isGroup) {
       const f = it.flight;
       const isRed = it.isCancelled || it.scheduledMinutes > it.flownMinutes;
-      const isGreen = !it.isCancelled && it.flownMinutes > it.scheduledMinutes;
+      const isYellow = !it.isCancelled && it.flownMinutes > it.scheduledMinutes;
 
       // Relleno celda Diferencia
       if (it.isCancelled) {
         ctx.fillStyle = '#fee2e2';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, rowHeight);
-      } else if (isRed || isGreen) {
-        ctx.fillStyle = isRed ? '#fce8e6' : '#e6f4ea';
+      } else if (isRed) {
+        ctx.fillStyle = '#fee2e2';
+        ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, rowHeight);
+      } else if (isYellow) {
+        ctx.fillStyle = '#fef3c7';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, rowHeight);
       }
 
@@ -5254,6 +5788,16 @@ function renderDifferencesTableToCanvas(items) {
         ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
         ctx.fillText('CANCELADO', colMap.diferencia.x + colMap.diferencia.width / 2, currentY + rowHeight / 2);
       } else {
+        if (isRed) {
+          ctx.fillStyle = '#b91c1c';
+          ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+        } else if (isYellow) {
+          ctx.fillStyle = '#b45309';
+          ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+        } else {
+          ctx.fillStyle = '#000000';
+          ctx.font = '13px "Segoe UI", Arial, sans-serif';
+        }
         ctx.fillText(formatMinutesToH_Mm(Math.abs(it.deviationMinutes)), colMap.diferencia.x + colMap.diferencia.width / 2, currentY + rowHeight / 2);
       }
 
@@ -5264,6 +5808,7 @@ function renderDifferencesTableToCanvas(items) {
       ctx.fillText(formatInstructorCell(f), colMap.instructor.x + 12, currentY + rowHeight / 2, colMap.instructor.width - 24);
 
       // Alumno
+      ctx.fillStyle = '#000000';
       ctx.fillText(formatAlumnoCell(f), colMap.alumno.x + 12, currentY + rowHeight / 2, colMap.alumno.width - 24);
 
       // Lineas divisorias verticales para esta fila
@@ -5288,11 +5833,14 @@ function renderDifferencesTableToCanvas(items) {
       const legsCount = it.flights.length;
       const groupHeight = legsCount * rowHeight;
       const isRed = it.scheduledMinutes > it.flownMinutes;
-      const isGreen = it.flownMinutes > it.scheduledMinutes;
+      const isYellow = it.flownMinutes > it.scheduledMinutes;
 
       // Relleno celda Diferencia agrupada
-      if (isRed || isGreen) {
-        ctx.fillStyle = isRed ? '#fce8e6' : '#e6f4ea';
+      if (isRed) {
+        ctx.fillStyle = '#fee2e2';
+        ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, groupHeight);
+      } else if (isYellow) {
+        ctx.fillStyle = '#fef3c7';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, groupHeight);
       }
 
@@ -5340,12 +5888,24 @@ function renderDifferencesTableToCanvas(items) {
       ctx.fillText(formatMinutesToH_Mm(it.scheduledMinutes), colMap.programado.x + colMap.programado.width / 2, currentY + groupHeight / 2);
 
       // Texto Celda Unificada Diferencia
+      if (isRed) {
+        ctx.fillStyle = '#b91c1c';
+        ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+      } else if (isYellow) {
+        ctx.fillStyle = '#b45309';
+        ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+      } else {
+        ctx.fillStyle = '#000000';
+        ctx.font = '13px "Segoe UI", Arial, sans-serif';
+      }
       ctx.fillText(formatMinutesToH_Mm(Math.abs(it.deviationMinutes)), colMap.diferencia.x + colMap.diferencia.width / 2, currentY + groupHeight / 2);
 
       // Texto Celda Unificada Instructor y Alumno (unidos y centrados en el medio del bloque)
+      ctx.fillStyle = '#000000';
       ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(instName, colMap.instructor.x + 12, currentY + groupHeight / 2, colMap.instructor.width - 24);
+      ctx.fillStyle = '#000000';
       ctx.fillText(alumName, colMap.alumno.x + 12, currentY + groupHeight / 2, colMap.alumno.width - 24);
 
       // Lineas verticales continuas para todo el grupo
@@ -5485,12 +6045,19 @@ function renderVuelosUI() {
       (f.registration && f.registration.toLowerCase().includes(query)) ||
       (f.flightNumber && f.flightNumber.includes(query));
 
+    const isCancelled = Boolean(f.isCancelled || f.status === 'CANCELLED');
+    const isLinked = Boolean(f.linkedGroupId);
+    const effDev = isLinked ? (f.linkedGroupDeviationMinutes ?? f.deviationMinutes ?? 0) : (f.deviationMinutes || 0);
+    const effStatus = isCancelled
+      ? 'CANCELLED'
+      : (effDev === 0 ? 'ON_TIME' : effDev > 0 ? 'DELAYED' : 'EARLY');
+
     const matchesStatus =
       statusFilter === 'ALL' ||
-      (statusFilter === 'ON_TIME' && f.status === 'ON_TIME') ||
-      (statusFilter === 'DELAYED' && f.status === 'DELAYED') ||
-      (statusFilter === 'EARLY' && f.status === 'EARLY') ||
-      (statusFilter === 'CANCELLED' && (f.isCancelled || f.status === 'CANCELLED'));
+      (statusFilter === 'ON_TIME' && effStatus === 'ON_TIME') ||
+      (statusFilter === 'DELAYED' && effStatus === 'DELAYED') ||
+      (statusFilter === 'EARLY' && effStatus === 'EARLY') ||
+      (statusFilter === 'CANCELLED' && isCancelled);
 
     return matchesSearch && matchesStatus;
   });
@@ -5612,7 +6179,7 @@ function renderVuelosUI() {
           📥 Cargar Archivos de Private Radar (Día o Mes Completo)
         </h3>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-          Selecciona ambos archivos descargados de Private Radar. Si contienen múltiples días, el sistema los agrupará automáticamente por jornada.
+          Selecciona los archivos descargados de Private Radar. Si faltan datos de horas voladas (ej. vuelos sin cerrar o VFR nocturno), puedes cargar únicamente la programación y completar las horas de bloque manualmente desde el ATL.
         </p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -5628,11 +6195,42 @@ function renderVuelosUI() {
           <!-- Dropzone Volado -->
           <label class="vuelos-file-box" for="input-excel-vol">
             <span style="font-size: 28px;">✈️</span>
-            <strong>2. Excel de Horas Voladas</strong>
+            <strong>2. Excel de Horas Voladas (Opcional si usas ATL)</strong>
             <span style="font-size: 12px; color: var(--text-muted);">Hours_372_*.xlsx</span>
             <input type="file" id="input-excel-vol" accept=".xlsx, .xls" style="display: none;" onchange="handleVolFileSelect(this)">
             <span id="name-excel-vol" style="font-size: 12px; color: var(--primary); font-weight: 600;">${vuelosState.volFile ? vuelosState.volFile.name : 'Seleccionar archivo...'}</span>
           </label>
+        </div>
+
+        <div id="dropzone-action-buttons" style="display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 16px; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 14px;">
+          <div id="notice-prog-only" style="flex: 1; font-size: 12px; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 8px 12px; border-radius: 6px; ${vuelosState.progFile && !vuelosState.volFile ? 'display: block;' : 'display: none;'}">
+            💡 <strong>Modo ATL manual:</strong> Puedes procesar ahora la programación. Al cargar se te preguntará si deseas pre-cargar las horas de bloque con el tiempo programado para ajustar solo las desviaciones (como los vuelos VFRN) usando el ATL.
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-left: auto;">
+            <button
+              type="button"
+              id="btn-process-prog-only"
+              class="btn btn-primary"
+              onclick="triggerProcessProgOnly()"
+              style="background: #0284c7; border-color: #0284c7; font-weight: 700; ${vuelosState.progFile ? 'display: inline-flex;' : 'display: none;'}"
+              title="Cargar programación sin esperar al Excel de volado para registrar horas desde el ATL"
+            >
+              <span>📋 Cargar Solo Programado (Completar con ATL)</span>
+            </button>
+
+            ${vuelosState.progFile && vuelosState.volFile ? `
+              <button
+                type="button"
+                id="btn-process-both"
+                class="btn btn-primary"
+                onclick="triggerProcessBothExcels()"
+                style="background: #10b981; border-color: #10b981; font-weight: 700;"
+              >
+                <span>🚀 Procesar Ambos Excels</span>
+              </button>
+            ` : ''}
+          </div>
         </div>
 
         ${vuelosState.isProcessing ? `
@@ -5748,8 +6346,8 @@ function renderVuelosUI() {
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
             ${[
               { id: 'ALL', label: 'Todos' },
-              { id: 'ON_TIME', label: 'Puntuales (±5m)' },
-              { id: 'DELAYED', label: 'Con Exceso (>5m)' },
+              { id: 'ON_TIME', label: 'Puntuales' },
+              { id: 'DELAYED', label: 'Con Exceso' },
               { id: 'EARLY', label: 'Adelantados' },
               { id: 'CANCELLED', label: 'Cancelados' }
             ].map(st => `
@@ -5773,7 +6371,7 @@ function renderVuelosUI() {
                 <th style="padding: 10px 8px; text-align: center; width: 36px;">
                   <input type="checkbox" id="flight-select-all-cb" onchange="toggleSelectAllFlights(this.checked)" title="Seleccionar todos para vincular">
                 </th>
-                <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'flightNumber')">Vuelo # ⬍</th>
+                <th style="padding: 10px 14px; cursor: pointer; white-space: nowrap;" onclick="handleVuelosSort('flights', 'flightNumber')">Vuelo # ⬍</th>
                 <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'registration')">Matrícula ⬍</th>
                 <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'studentName')">Alumno ⬍</th>
                 <th style="padding: 10px 14px; cursor: pointer;" onclick="handleVuelosSort('flights', 'instructorName')">Instructor ⬍</th>
@@ -5815,9 +6413,14 @@ function renderVuelosUI() {
                   const groupDiff = isLinked ? (f.linkedGroupDeviationMinutes ?? (totalFlown - totalSched)) : f.deviationMinutes;
 
                   let groupStatus = isLinked ? f.linkedGroupStatus : f.status;
-                  if (isLinked && !groupStatus) {
-                    if (groupDiff > 5) groupStatus = 'DELAYED';
-                    else if (groupDiff < -5) groupStatus = 'EARLY';
+                  if (isLinked) {
+                    if (groupDiff > 0) groupStatus = 'DELAYED';
+                    else if (groupDiff < 0) groupStatus = 'EARLY';
+                    else groupStatus = 'ON_TIME';
+                  } else {
+                    if (f.isCancelled) groupStatus = 'CANCELLED';
+                    else if (groupDiff > 0) groupStatus = 'DELAYED';
+                    else if (groupDiff < 0) groupStatus = 'EARLY';
                     else groupStatus = 'ON_TIME';
                   }
 
@@ -5831,9 +6434,11 @@ function renderVuelosUI() {
                     <td style="padding: 10px 8px; text-align: center; ${cellBottomBorder}">
                       <input type="checkbox" class="flight-select-cb" data-flight-select-index="${flightIdx}" ${selectedFlightIndices.has(flightIdx) ? 'checked' : ''} onchange="toggleFlightSelection(${flightIdx}, this.checked)" title="Seleccionar para vincular">
                     </td>
-                    <td style="padding: 10px 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; ${cellBottomBorder}">
-                      ${f.flightNumber}
-                      ${isLinked ? `<span style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 1px 5px; border-radius: 4px; font-size: 10px; margin-left: 4px; vertical-align: middle;" title="Tramo ${legIndex} de ${groupCount} en bloque unificado">🔗 Tramo ${legIndex}/${groupCount}</span>` : ''}
+                    <td style="padding: 8px 14px; font-family: 'JetBrains Mono', monospace; ${cellBottomBorder}">
+                      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;">
+                        <span style="font-weight: 700;">${f.flightNumber}</span>
+                        ${isLinked ? `<span style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 1px 5px; border-radius: 4px; font-size: 10px; white-space: nowrap; display: inline-block; line-height: 1.2;" title="Tramo ${legIndex} de ${groupCount} en bloque unificado">🔗 Tramo ${legIndex}/${groupCount}</span>` : ''}
+                      </div>
                     </td>
                     <td style="padding: 10px 14px; ${cellBottomBorder}">
                       <span style="background: var(--bg-input); padding: 2px 7px; border-radius: 4px; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${f.registration}</span>
@@ -5880,11 +6485,16 @@ function renderVuelosUI() {
                     ` : ''}
 
                     <!-- Bloque Volado (por tramo individual) -->
-                    <td style="padding: 10px 14px; text-align: center; font-weight: 600; ${cellBottomBorder}">${f.isCancelled ? '<span style="opacity:0.4;">—</span>' : f.flownHoursFormatted}</td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 600; cursor: pointer; ${cellBottomBorder}" onclick="openFlightEditModal(${flightIdx})" title="Clic para editar tiempo de bloque (ATL)">
+                      <span style="border-bottom: 1px dashed rgba(255,255,255,0.3); padding-bottom: 1px;">
+                        ${f.isCancelled ? '<span style="opacity:0.4;">—</span>' : f.flownHoursFormatted}
+                      </span>
+                      ${f.isManualAtl ? '<span style="display: block; font-size: 9px; color: #38bdf8; font-weight: 700; margin-top: 2px;">📋 ATL</span>' : ''}
+                    </td>
 
                     <!-- Desviación: fusionada si pertenece a un bloque vinculado -->
                     ${(!isLinked || isFirstInGroup) ? `
-                      <td ${isLinked && groupCount > 1 ? `rowspan="${groupCount}"` : ''} style="padding: 10px 14px; text-align: center; vertical-align: middle; font-weight: 700; color: ${f.isCancelled ? 'var(--text-muted)' : (groupDiff > 5 ? '#f59e0b' : groupDiff < -5 ? '#10b981' : 'inherit')}; ${isLinked ? 'background: rgba(56, 189, 248, 0.03); border-left: 1px solid rgba(56, 189, 248, 0.15); border-right: 1px solid rgba(56, 189, 248, 0.15); border-top: 1px solid rgba(56, 189, 248, 0.15); border-bottom: 1px solid rgba(56, 189, 248, 0.15);' : 'border-bottom: 1px solid var(--border-color);'}">
+                      <td ${isLinked && groupCount > 1 ? `rowspan="${groupCount}"` : ''} style="padding: 10px 14px; text-align: center; vertical-align: middle; font-weight: 700; color: ${f.isCancelled ? 'var(--text-muted)' : (groupDiff < 0 ? '#f43f5e' : groupDiff > 0 ? '#f59e0b' : '#10b981')}; ${isLinked ? 'background: rgba(56, 189, 248, 0.03); border-left: 1px solid rgba(56, 189, 248, 0.15); border-right: 1px solid rgba(56, 189, 248, 0.15); border-top: 1px solid rgba(56, 189, 248, 0.15); border-bottom: 1px solid rgba(56, 189, 248, 0.15);' : 'border-bottom: 1px solid var(--border-color);'}">
                         ${f.isCancelled ? '<span style="opacity:0.4;">—</span>' : `${groupDiff > 0 ? '+' : ''}${formatMinutesToHhMm(groupDiff)}`}
                       </td>
                     ` : ''}
@@ -5897,7 +6507,7 @@ function renderVuelosUI() {
                             Cancelado
                           </span>
                         ` : `
-                          <span style="background: ${groupStatus === 'ON_TIME' ? 'rgba(16, 185, 129, 0.2)' : groupStatus === 'EARLY' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${groupStatus === 'ON_TIME' ? '#10b981' : groupStatus === 'EARLY' ? '#38bdf8' : '#f59e0b'}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                          <span style="background: ${groupStatus === 'ON_TIME' ? 'rgba(16, 185, 129, 0.2)' : groupStatus === 'EARLY' ? 'rgba(244, 63, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${groupStatus === 'ON_TIME' ? '#10b981' : groupStatus === 'EARLY' ? '#f43f5e' : '#f59e0b'}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
                             ${groupStatus === 'ON_TIME' ? 'Puntual' : `${groupDiff > 0 ? '+' : ''}${formatMinutesToHhMm(groupDiff)}`}
                           </span>
                         `}
@@ -6006,6 +6616,7 @@ function renderVuelosUI() {
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                       <div style="display: flex; gap: 4px; justify-content: center;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="recoverCancelledFlightWithAtl(${vuelosState.matchedFlights.indexOf(f)})" title="Recuperar vuelo e introducir horas de bloque del ATL" style="padding: 3px 8px; font-size: 12px; background: #0284c7; border-color: #0284c7; font-weight: 600;">✈️ ATL</button>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="openFlightEditModal(${vuelosState.matchedFlights.indexOf(f)})" title="Editar o recuperar vuelo" style="padding: 3px 8px; font-size: 12px;">✏️</button>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="deleteFlightByIndex(${vuelosState.matchedFlights.indexOf(f)})" title="Eliminar cancelación" style="padding: 3px 8px; font-size: 12px; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">🗑️</button>
                       </div>
@@ -6041,7 +6652,7 @@ function renderVuelosUI() {
                 <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${p.flightsCount}</td>
                 <td style="padding: 10px 14px; text-align: center;">${p.totalScheduledHoursFormatted}</td>
                 <td style="padding: 10px 14px; text-align: center;">${p.totalFlownHoursFormatted}</td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${p.totalDeviationMinutes > 5 ? '#f59e0b' : p.totalDeviationMinutes < -5 ? '#10b981' : 'inherit'};">
+                <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${p.totalDeviationMinutes < 0 ? '#f43f5e' : p.totalDeviationMinutes > 0 ? '#f59e0b' : '#10b981'};">
                   ${p.totalDeviationFormatted}
                 </td>
               </tr>
@@ -6071,7 +6682,7 @@ function renderVuelosUI() {
                 <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${i.flightsCount}</td>
                 <td style="padding: 10px 14px; text-align: center;">${i.totalScheduledHoursFormatted}</td>
                 <td style="padding: 10px 14px; text-align: center;">${i.totalFlownHoursFormatted}</td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${i.totalDeviationMinutes > 5 ? '#f59e0b' : i.totalDeviationMinutes < -5 ? '#10b981' : 'inherit'};">
+                <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${i.totalDeviationMinutes < 0 ? '#f43f5e' : i.totalDeviationMinutes > 0 ? '#f59e0b' : '#10b981'};">
                   ${i.totalDeviationFormatted}
                 </td>
               </tr>
@@ -6101,7 +6712,7 @@ function renderVuelosUI() {
                 <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${s.flightsCount}</td>
                 <td style="padding: 10px 14px; text-align: center;">${s.totalScheduledHoursFormatted}</td>
                 <td style="padding: 10px 14px; text-align: center;">${s.totalFlownHoursFormatted}</td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${s.totalDeviationMinutes > 5 ? '#f59e0b' : s.totalDeviationMinutes < -5 ? '#10b981' : 'inherit'};">
+                <td style="padding: 10px 14px; text-align: center; font-weight: 700; color: ${s.totalDeviationMinutes < 0 ? '#f43f5e' : s.totalDeviationMinutes > 0 ? '#f59e0b' : '#10b981'};">
                   ${s.totalDeviationFormatted}
                 </td>
               </tr>
@@ -6132,7 +6743,7 @@ function renderVuelosUI() {
                 <tr style="border-bottom: 1px solid var(--border-color);">
                   <td style="padding: 8px 12px;">${renderPersonBadgeHtml(i.instructor_code, i.instructor_name)}</td>
                   <td style="padding: 8px 12px; text-align: center;">${i.flights_count}</td>
-                  <td style="padding: 8px 12px; text-align: center; font-weight: 700; color: ${i.total_deviation_min > 0 ? '#f59e0b' : '#10b981'};">${i.total_deviation_formatted}</td>
+                  <td style="padding: 8px 12px; text-align: center; font-weight: 700; color: ${i.total_deviation_min < 0 ? '#f43f5e' : i.total_deviation_min > 0 ? '#f59e0b' : '#10b981'};">${i.total_deviation_formatted}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -6157,7 +6768,7 @@ function renderVuelosUI() {
                 <tr style="border-bottom: 1px solid var(--border-color);">
                   <td style="padding: 8px 12px;">${renderPersonBadgeHtml(s.student_code, s.student_name)}</td>
                   <td style="padding: 8px 12px; text-align: center;">${s.flights_count}</td>
-                  <td style="padding: 8px 12px; text-align: center; font-weight: 700; color: ${s.total_deviation_min > 0 ? '#f59e0b' : '#10b981'};">${s.total_deviation_formatted}</td>
+                  <td style="padding: 8px 12px; text-align: center; font-weight: 700; color: ${s.total_deviation_min < 0 ? '#f43f5e' : s.total_deviation_min > 0 ? '#f59e0b' : '#10b981'};">${s.total_deviation_formatted}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -6278,13 +6889,7 @@ function renderVuelosUI() {
                 onchange="handleCancellationReasonSelect(this.value)"
               >
                 <option value="">-- Selecciona motivo de cancelación --</option>
-                <option value="Meteorología adversa">Meteorología adversa</option>
-                <option value="Avería mecánica / Mantenimiento">Avería mecánica / Mantenimiento</option>
-                <option value="Indisposición del Alumno">Indisposición del Alumno</option>
-                <option value="Indisposición del Instructor">Indisposición del Instructor</option>
-                <option value="Operacional / Tráfico Aéreo / NOTAM">Operacional / Tráfico Aéreo / NOTAM</option>
-                <option value="Reprogramación de Escuela">Reprogramación de Escuela</option>
-                <option value="No presentado (No show)">No presentado (No show)</option>
+                ${getAllCancellationReasons().map(r => `<option value="${r.replace(/"/g, '&quot;')}">${r}</option>`).join('')}
                 <option value="Otro">Otro motivo (especificar abajo)...</option>
               </select>
               <input
@@ -6296,13 +6901,7 @@ function renderVuelosUI() {
                 placeholder="Detalle o motivo de cancelación..."
               >
               <datalist id="cancellation-reasons-datalist">
-                <option value="Meteorología adversa"></option>
-                <option value="Avería mecánica / Mantenimiento"></option>
-                <option value="Indisposición del Alumno"></option>
-                <option value="Indisposición del Instructor"></option>
-                <option value="Operacional / Tráfico Aéreo / NOTAM"></option>
-                <option value="Reprogramación de Escuela"></option>
-                <option value="No presentado (No show)"></option>
+                ${getAllCancellationReasons().map(r => `<option value="${r.replace(/"/g, '&quot;')}"></option>`).join('')}
               </datalist>
             </div>
           </div>
@@ -6419,7 +7018,15 @@ function handleProgFileSelect(input) {
   const file = input.files?.[0];
   if (!file) return;
   vuelosState.progFile = file;
-  document.getElementById('name-excel-prog').textContent = file.name;
+  const nameEl = document.getElementById('name-excel-prog');
+  if (nameEl) nameEl.textContent = file.name;
+
+  const progOnlyBtn = document.getElementById('btn-process-prog-only');
+  if (progOnlyBtn) progOnlyBtn.style.display = 'inline-flex';
+
+  const progOnlyNotice = document.getElementById('notice-prog-only');
+  if (progOnlyNotice && !vuelosState.volFile) progOnlyNotice.style.display = 'block';
+
   checkAndTriggerExcelProcessing();
 }
 
@@ -6427,7 +7034,15 @@ function handleVolFileSelect(input) {
   const file = input.files?.[0];
   if (!file) return;
   vuelosState.volFile = file;
-  document.getElementById('name-excel-vol').textContent = file.name;
+  const nameEl = document.getElementById('name-excel-vol');
+  if (nameEl) nameEl.textContent = file.name;
+
+  const progOnlyNotice = document.getElementById('notice-prog-only');
+  if (progOnlyNotice) progOnlyNotice.style.display = 'none';
+
+  const bothBtn = document.getElementById('btn-process-both');
+  if (bothBtn && vuelosState.progFile) bothBtn.style.display = 'inline-flex';
+
   checkAndTriggerExcelProcessing();
 }
 

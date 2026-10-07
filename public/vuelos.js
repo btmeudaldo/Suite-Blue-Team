@@ -5581,6 +5581,51 @@ async function saveVuelosImageToDesktop(imageBytes, filename) {
   return result;
 }
 
+function getDifferencesItemRegistration(it) {
+  if (!it) return '';
+  if (it.isGroup) {
+    const fWithReg = it.flights?.find(x => x && x.registration);
+    return (fWithReg?.registration || it.flights?.[0]?.registration || '').trim();
+  }
+  return (it.flight?.registration || '').trim();
+}
+
+function getDifferencesItemStudent(it) {
+  if (!it) return '';
+  if (it.isGroup) {
+    const alumFlight = it.flights?.find(x => x && (x.studentCode || x.studentName)) || it.flights?.[0];
+    return (formatAlumnoCell(alumFlight) || alumFlight?.studentCode || alumFlight?.studentName || alumFlight?.pilotName || '').trim();
+  }
+  return (formatAlumnoCell(it.flight) || it.flight?.studentCode || it.flight?.studentName || it.flight?.pilotName || '').trim();
+}
+
+function sortDifferencesForExport(items) {
+  if (!Array.isArray(items)) return [];
+  return items.slice().sort((a, b) => {
+    const regA = getDifferencesItemRegistration(a).toUpperCase();
+    const regB = getDifferencesItemRegistration(b).toUpperCase();
+
+    // Prioridad 1: Matrícula (A-Z)
+    if (regA && !regB) return -1;
+    if (!regA && regB) return 1;
+    if (regA !== regB) {
+      const cmpReg = regA.localeCompare(regB, 'es', { numeric: true, sensitivity: 'base' });
+      if (cmpReg !== 0) return cmpReg;
+    }
+
+    // Prioridad 2: Alumno (A-Z)
+    const aluA = getDifferencesItemStudent(a).toUpperCase();
+    const aluB = getDifferencesItemStudent(b).toUpperCase();
+
+    if (aluA && !aluB) return -1;
+    if (!aluA && aluB) return 1;
+    const cmpAlu = aluA.localeCompare(aluB, 'es', { numeric: true, sensitivity: 'base' });
+    if (cmpAlu !== 0) return cmpAlu;
+
+    return 0;
+  });
+}
+
 function getDifferencesFlightsForExport() {
   const items = [];
   const processedGroups = new Set();
@@ -5631,10 +5676,11 @@ function getDifferencesFlightsForExport() {
     }
   }
 
-  return items;
+  return sortDifferencesForExport(items);
 }
 
 function renderDifferencesTableToCanvas(items) {
+  items = sortDifferencesForExport(items);
   const colWidths = {
     matricula: 90,
     ruta: 220,

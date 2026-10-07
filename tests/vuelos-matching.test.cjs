@@ -913,5 +913,58 @@ test('deviation column renders flying less in red and flying more in yellow', ()
   assert.match(source, /total_deviation_min < 0 \? '#f43f5e' : i\.total_deviation_min > 0 \? '#f59e0b'/);
 });
 
+test('differences image exports sorted by registration first and student second', () => {
+  assert.match(source, /function getDifferencesItemRegistration/);
+  assert.match(source, /function getDifferencesItemStudent/);
+  assert.match(source, /function sortDifferencesForExport/);
+  assert.match(source, /items = sortDifferencesForExport\(items\)/);
+  assert.match(source, /return sortDifferencesForExport\(items\)/);
+
+  // Evaluar funciones de ordenación con el contexto existente
+  const sortStart = source.indexOf('function getDifferencesItemRegistration');
+  const sortEnd = source.indexOf('function openDifferencesImageModal');
+  const sortSnippet = source.slice(sortStart, sortEnd);
+  vm.runInContext(sortSnippet, context);
+
+  const sortDiffs = context.sortDifferencesForExport;
+  assert.equal(typeof sortDiffs, 'function');
+
+  const testItems = [
+    { isGroup: false, flight: { registration: 'EC-XYZ', studentCode: 'LANSO', deviationMinutes: -10 } },
+    { isGroup: false, flight: { registration: 'EC-ABC', studentCode: 'ZORRO', deviationMinutes: 15 } },
+    { isGroup: false, flight: { registration: 'EC-ABC', studentCode: 'AHERR', deviationMinutes: -20 }, isCancelled: true },
+    { isGroup: false, flight: { registration: 'EC-ABC', studentCode: 'CLOPE', deviationMinutes: 5 } },
+    {
+      isGroup: true,
+      flights: [
+        { registration: 'EC-XYZ', studentCode: 'AHERR', deviationMinutes: 5 },
+        { registration: 'EC-XYZ', studentCode: 'AHERR', deviationMinutes: 10 }
+      ],
+      deviationMinutes: 15
+    }
+  ];
+
+  const sorted = sortDiffs(testItems);
+
+  // 1º Matrícula EC-ABC, ordenado por alumno (AHERR, CLOPE, ZORRO)
+  assert.equal(sorted[0].flight.registration, 'EC-ABC');
+  assert.equal(context.formatAlumnoCell(sorted[0].flight), 'AHERR');
+
+  assert.equal(sorted[1].flight.registration, 'EC-ABC');
+  assert.equal(context.formatAlumnoCell(sorted[1].flight), 'CLOPE');
+
+  assert.equal(sorted[2].flight.registration, 'EC-ABC');
+  assert.equal(context.formatAlumnoCell(sorted[2].flight), 'ZORRO');
+
+  // 2º Matrícula EC-XYZ, ordenado por alumno (AHERR en grupo, luego LANSO)
+  assert.equal(sorted[3].isGroup, true);
+  assert.equal(sorted[3].flights[0].registration, 'EC-XYZ');
+  assert.equal(context.formatAlumnoCell(sorted[3].flights[0]), 'AHERR');
+
+  assert.equal(sorted[4].flight.registration, 'EC-XYZ');
+  assert.equal(context.formatAlumnoCell(sorted[4].flight), 'LANSO');
+});
+
+
 
 

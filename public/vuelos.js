@@ -5740,7 +5740,7 @@ function renderDifferencesTableToCanvas(items) {
     if (!it.isGroup) {
       const f = it.flight;
       const isRed = it.isCancelled || it.scheduledMinutes > it.flownMinutes;
-      const isYellow = !it.isCancelled && it.flownMinutes > it.scheduledMinutes;
+      const isGreen = !it.isCancelled && it.flownMinutes > it.scheduledMinutes;
 
       // Relleno celda Diferencia
       if (it.isCancelled) {
@@ -5749,8 +5749,8 @@ function renderDifferencesTableToCanvas(items) {
       } else if (isRed) {
         ctx.fillStyle = '#fee2e2';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, rowHeight);
-      } else if (isYellow) {
-        ctx.fillStyle = '#fef3c7';
+      } else if (isGreen) {
+        ctx.fillStyle = '#dcfce7';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, rowHeight);
       }
 
@@ -5791,8 +5791,8 @@ function renderDifferencesTableToCanvas(items) {
         if (isRed) {
           ctx.fillStyle = '#b91c1c';
           ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
-        } else if (isYellow) {
-          ctx.fillStyle = '#b45309';
+        } else if (isGreen) {
+          ctx.fillStyle = '#15803d';
           ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
         } else {
           ctx.fillStyle = '#000000';
@@ -5833,14 +5833,14 @@ function renderDifferencesTableToCanvas(items) {
       const legsCount = it.flights.length;
       const groupHeight = legsCount * rowHeight;
       const isRed = it.scheduledMinutes > it.flownMinutes;
-      const isYellow = it.flownMinutes > it.scheduledMinutes;
+      const isGreen = it.flownMinutes > it.scheduledMinutes;
 
       // Relleno celda Diferencia agrupada
       if (isRed) {
         ctx.fillStyle = '#fee2e2';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, groupHeight);
-      } else if (isYellow) {
-        ctx.fillStyle = '#fef3c7';
+      } else if (isGreen) {
+        ctx.fillStyle = '#dcfce7';
         ctx.fillRect(colMap.diferencia.x, currentY, colMap.diferencia.width, groupHeight);
       }
 
@@ -5891,8 +5891,8 @@ function renderDifferencesTableToCanvas(items) {
       if (isRed) {
         ctx.fillStyle = '#b91c1c';
         ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
-      } else if (isYellow) {
-        ctx.fillStyle = '#b45309';
+      } else if (isGreen) {
+        ctx.fillStyle = '#15803d';
         ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
       } else {
         ctx.fillStyle = '#000000';

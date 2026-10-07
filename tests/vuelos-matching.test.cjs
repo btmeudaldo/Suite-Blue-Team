@@ -905,8 +905,9 @@ test('deviation column renders flying less in red and flying more in yellow', ()
   assert.match(source, /groupDiff < 0 \? '#f43f5e' : groupDiff > 0 \? '#f59e0b'/);
   // Status badge: EARLY in red #f43f5e, DELAYED in yellow #f59e0b
   assert.match(source, /groupStatus === 'EARLY' \? '#f43f5e' : '#f59e0b'/);
-  // Canvas export: flying less in red pastel #fee2e2 and text #b91c1c, flying more in yellow pastel #fef3c7 and text #b45309
-  assert.match(source, /isRed\) \{\s*ctx\.fillStyle = '#fee2e2';[\s\S]*\} else if \(isYellow\) \{\s*ctx\.fillStyle = '#fef3c7';/);
+  // Canvas export: flying less in red pastel #fee2e2 and text #b91c1c, flying more in green pastel #dcfce7 and text #15803d
+  assert.match(source, /isRed\) \{\s*ctx\.fillStyle = '#fee2e2';[\s\S]*\} else if \(isGreen\) \{\s*ctx\.fillStyle = '#dcfce7';/);
+  assert.match(source, /isGreen\) \{\s*ctx\.fillStyle = '#15803d';\s*ctx\.font = 'bold 13px/);
   // Aggregate tables: negative in red #f43f5e, positive in yellow #f59e0b
   assert.match(source, /totalDeviationMinutes < 0 \? '#f43f5e' : p\.totalDeviationMinutes > 0 \? '#f59e0b'/);
   assert.match(source, /total_deviation_min < 0 \? '#f43f5e' : i\.total_deviation_min > 0 \? '#f59e0b'/);

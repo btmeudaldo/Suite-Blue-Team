@@ -1172,8 +1172,8 @@
       </div>
 
       <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-        <button class="btn btn-primary btn-sm" onclick="abrirModalInformeCFI()" title="Generar informe limpio para enviar al CFI con las maniobras pendientes" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-weight: 700; border: none; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);">
-          <span>📄 Informe para CFI</span>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalInformeCFI()" title="Generar informe en PDF bien organizado de alumnos con maniobras suspendidas" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-weight: 700; border: none; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);">
+          <span>📄 Informe PDF / CFI</span>
         </button>
         <button class="btn btn-secondary btn-sm" onclick="abrirModalAddItemManual()" title="Añadir una maniobra o ejercicio suspendido manualmente">
           <span>➕ Añadir Ítem Manual</span>
@@ -1351,15 +1351,15 @@
   <!-- MODAL: INFORME LIMPIO PARA EL CFI -->
   <div id="modal-informe-cfi" class="modal hidden">
     <div class="modal-backdrop" onclick="cerrarModalInformeCFI()"></div>
-    <div class="modal-content" style="max-width: 820px; width: 95%;">
+    <div class="modal-content" style="max-width: 860px; width: 95%;">
       <div class="modal-header" style="background: linear-gradient(135deg, #0f172a, #1e293b); border-bottom: 2px solid #0284c7;">
         <div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span style="font-size: 1.4rem;">📄</span>
-            <h3 style="margin: 0; color: #fff; font-size: 1.2rem;">Informe de Maniobras Suspendidas para el CFI</h3>
+            <h3 style="margin: 0; color: #fff; font-size: 1.2rem;">Informe Oficial de Alumnos con Ítems Suspendidos (PDF)</h3>
           </div>
           <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.82rem;">
-            Solo incluye alumnos y maniobras problemáticas pendientes de subsanar en Private Radar. Los ítems resueltos han sido excluidos.
+            Documento PDF estructurado para Jefatura de Vuelos (CFI) e instructores con el desglose de maniobras por subsanar.
           </p>
         </div>
         <button class="modal-close-btn" onclick="cerrarModalInformeCFI()">&times;</button>
@@ -1381,7 +1381,23 @@
             <select id="cfi-filter-expedientes" class="form-input" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;" onchange="actualizarVistaPreviaCFI()">
               <option value="all">Todos los alumnos con pendientes</option>
               <option value="revisados">Solo expedientes ya auditados / revisados</option>
+              <option value="pendientes_auditar">Solo expedientes por auditar</option>
             </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Orientación:</label>
+            <select id="cfi-filter-orientacion" class="form-input" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;">
+              <option value="portrait">📄 Vertical (A4 Portrait - Recomendado)</option>
+              <option value="landscape">📑 Horizontal (A4 Landscape - Extendido)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-main); cursor: pointer; user-select: none;">
+              <input type="checkbox" id="cfi-chk-resumen" checked style="cursor: pointer;" />
+              <strong>Tabla Resumen Inicial</strong>
+            </label>
           </div>
 
           <div id="cfi-preview-kpis" style="display: flex; gap: 0.5rem; align-items: center;">
@@ -1403,8 +1419,8 @@
           <button class="btn btn-secondary" onclick="copiarTextoInformeCFI()" title="Copiar informe en formato texto limpio listo para WhatsApp o correo">
             📋 Copiar para WhatsApp / Email
           </button>
-          <button class="btn btn-primary" onclick="descargarPDFInformeCFI()" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-weight: 700;">
-            📄 Descargar PDF Oficial para CFI
+          <button class="btn btn-primary" onclick="descargarPDFInformeCFI()" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-weight: 700; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);">
+            📄 Descargar Informe PDF Bien Organizado
           </button>
         </div>
       </div>
@@ -1611,6 +1627,6 @@
   <script src="/public/shared/jspdf.umd.min.js"></script>
   <script src="/public/shared/jspdf.plugin.autotable.min.js"></script>
   <script src="/public/vuelos.js?v=20261002-vuelos-atl-manual-2"></script>
-  <script src="/public/items_suspendidos.js?v=20261002-cfi-manual-2"></script>
+  <script src="/public/items_suspendidos.js?v=20261013-cursos-pendientes-only"></script>
 </body>
 </html>

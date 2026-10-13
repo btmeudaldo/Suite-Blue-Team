@@ -308,7 +308,11 @@ function renderizarListadoAlumnos() {
             <div class="student-name-group">
               <h3 class="student-full-name">${escapeHtml(alumno.name)}</h3>
               <div class="student-meta-badges">
-                ${alumno.cursos.map(c => `<span class="badge-curso badge-curso-${c.toLowerCase()}">${c}</span>`).join('')}
+                ${(() => {
+                  const cursosPendientes = Array.from(new Set(alumno.items.filter(i => !i.corregido_en_pr).map(i => i.curso).filter(Boolean)));
+                  const cursosMostrar = currentModoVista === 'activos' && cursosPendientes.length > 0 ? cursosPendientes : alumno.cursos;
+                  return cursosMostrar.map(c => `<span class="badge-curso badge-curso-${c.toLowerCase()}">${c}</span>`).join('');
+                })()}
                 <span class="badge-sub-info">${alumno.filteredItems.length} maniobra(s) ${currentModoVista === 'activos' ? 'por resolver' : 'listada(s)'}</span>
               </div>
             </div>
@@ -355,6 +359,9 @@ function renderizarListadoAlumnos() {
               <span class="actions-label">Acciones rápidas:</span>
               <button class="btn btn-secondary btn-sm" onclick="copiarResumenAlumno('${escapeHtml(alumno.name)}', '${escapeHtml(alumno.code)}')">
                 📋 Copiar lista de ${escapeHtml(alumno.name.split(',')[0])}
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="descargarPDFInformeAlumno('${escapeHtml(alumno.code || alumno.name)}')" title="Generar informe oficial en PDF para este alumno">
+                📄 Descargar PDF Alumno
               </button>
               <button class="btn btn-secondary btn-sm" onclick="abrirModalAddItemManual('${escapeHtml(alumno.name)}', '${escapeHtml(alumno.code)}', '${escapeHtml(alumno.cursos[0] || 'MEP')}')" title="Añadir una maniobra suspendida manual a este expediente">
                 ➕ Añadir Maniobra Manual
@@ -648,8 +655,9 @@ function copiarResumenAlumno(nombre, codigo) {
     return;
   }
 
+  const cursosActivos = Array.from(new Set(itemsActivos.map(it => it.curso).filter(Boolean)));
   let texto = `ALUMNO: ${alumno.name} (Código PR: ${alumno.code || 'N/A'})\n`;
-  texto += `CURSOS: ${alumno.cursos.join(', ')}\n`;
+  texto += `CURSOS: ${(cursosActivos.length > 0 ? cursosActivos : alumno.cursos).join(', ')}\n`;
   texto += `MANIOBRAS PENDIENTES DE REPROGRAMAR / RESOLVER (${itemsActivos.length}):\n`;
   texto += `------------------------------------------------------\n`;
 
@@ -691,8 +699,9 @@ function copiarResumenGlobalParaPR() {
   texto += `======================================================\n\n`;
 
   alumnosConPendientes.forEach(alumno => {
+    const cursosActivos = Array.from(new Set(alumno.activos.map(it => it.curso).filter(Boolean)));
     texto += `👤 ALUMNO: ${alumno.name} | CÓDIGO PR: ${alumno.code || 'N/A'}\n`;
-    texto += `   Cursos: ${alumno.cursos.join(', ')}\n`;
+    texto += `   Cursos: ${(cursosActivos.length > 0 ? cursosActivos : alumno.cursos).join(', ')}\n`;
     alumno.activos.forEach(it => {
       let tag = '🔴 [SUSPENDIDO]';
       if (it.tipo === 'ABIERTO' || it.nota === 'N/A' || it.nota === 'NA') {
@@ -1166,6 +1175,63 @@ function cerrarModalInformeCFI() {
   if (modal) modal.classList.add("hidden");
 }
 
+function cleanTextForPdf(str) {
+  if (str === undefined || str === null) return "";
+  let s = String(str);
+  // 1. Reemplazos semánticos prioritarios de etiquetas y símbolos ATO
+  s = s.replace(/🟡/g, '[ABIERTO]');
+  s = s.replace(/🔴/g, '[SUSPENDIDO]');
+  s = s.replace(/💬/g, '[V. POSTERIOR]');
+  s = s.replace(/✓/g, '[OK]');
+  s = s.replace(/↳\s*/g, '-> ');
+  s = s.replace(/•/g, '-');
+  s = s.replace(/[–—]/g, '-');
+  s = s.replace(/[‘’]/g, "'");
+  s = s.replace(/[“”]/g, '"');
+  s = s.replace(/…/g, '...');
+  s = s.replace(/≤/g, '<=');
+  s = s.replace(/≥/g, '>=');
+  // 2. Eliminar cualquier otro emoji o símbolo no soportado por fuentes base de jsPDF (WinAnsi)
+  s = s.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+  return s.trim();
+}
+
+/**
+ * Guarda el archivo PDF localmente en la carpeta de Descargas del sistema operativo
+ * y lo selecciona en el Explorador de Windows mediante el backend local.
+ * Si se ejecuta en un navegador web convencional o falla el backend, utiliza doc.save() como fallback.
+ */
+async function guardarPDFItemsSuspendidos(doc, filename) {
+  try {
+    const pdfBytes = doc.output('arraybuffer');
+    const response = await fetch('/api/items_suspendidos/guardar_pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/pdf',
+        'X-Filename': encodeURIComponent(filename)
+      },
+      body: pdfBytes
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.status === 'ok') {
+        const dest = result.ubicacion === 'Descargas'
+          ? 'Guardado en la carpeta Descargas y seleccionado en el Explorador de Windows.'
+          : `Guardado en: ${result.carpeta}`;
+        mostrarToastNotificacion(`📄 PDF generado con éxito. ${dest}`);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('No se pudo guardar directamente a través del backend local, usando fallback del navegador:', err);
+  }
+
+  // Fallback para navegador web tradicional o en caso de indisponibilidad del endpoint local
+  doc.save(filename);
+  mostrarToastNotificacion('📄 Informe PDF oficial descargado con éxito.');
+}
+
 function getItemsCFIProblematicos() {
   if (!suspendidosData || !suspendidosData.alumnos) return [];
 
@@ -1177,6 +1243,8 @@ function getItemsCFIProblematicos() {
   // Filtro por expediente si se requiere
   if (expFiltro === "revisados") {
     alumnos = alumnos.filter(a => a.expediente_revisado);
+  } else if (expFiltro === "pendientes" || expFiltro === "pendientes_auditar") {
+    alumnos = alumnos.filter(a => !a.expediente_revisado);
   }
 
   // Filtrar estrictamente solo alumnos con maniobras que NO han sido resueltas (!corregido_en_pr)
@@ -1187,9 +1255,11 @@ function getItemsCFIProblematicos() {
       items = items.filter(i => i.curso === cursoFiltro);
     }
     if (items.length > 0) {
+      const cursosPendientes = Array.from(new Set(items.map(it => it.curso).filter(Boolean)));
       result.push({
         ...a,
-        itemsPendientes: items
+        itemsPendientes: items,
+        cursosPendientes: cursosPendientes.length > 0 ? cursosPendientes : (a.cursos || [])
       });
     }
   });
@@ -1229,6 +1299,9 @@ function actualizarVistaPreviaCFI() {
           <span>👤 ${escapeHtml(alumno.name)}</span>
           <span style="font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">
             CÓDIGO PR: ${escapeHtml(alumno.code || 'SIN CÓDIGO')}
+          </span>
+          <span style="font-size: 0.75rem; background: rgba(2, 132, 199, 0.15); color: #0284c7; padding: 2px 6px; border-radius: 4px; font-weight: 700;">
+            ${escapeHtml((alumno.cursosPendientes || alumno.cursos).join(', '))}
           </span>
           <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto;">
             ${alumno.itemsPendientes.length} maniobra(s)
@@ -1281,7 +1354,7 @@ function generarTextoInformeCFI() {
   alumnosProblematicos.forEach((al, index) => {
     txt += `${index + 1}. 👤 ALUMNO: ${al.name}\n`;
     txt += `   CÓDIGO PR: ${al.code || 'N/A'}\n`;
-    txt += `   CURSOS: ${al.cursos.join(', ')}\n`;
+    txt += `   CURSOS: ${(al.cursosPendientes || al.cursos).join(', ')}\n`;
     txt += `   MANIOBRAS PENDIENTES (${al.itemsPendientes.length}):\n`;
 
     al.itemsPendientes.forEach((it, itIdx) => {
@@ -1316,10 +1389,10 @@ function copiarTextoInformeCFI() {
   copiarAlPortapapeles(txt, "Informe para CFI copiado al portapapeles listo para enviar");
 }
 
-function descargarPDFInformeCFI() {
+async function descargarPDFInformeCFI() {
   const alumnosProblematicos = getItemsCFIProblematicos();
   if (alumnosProblematicos.length === 0) {
-    alert("No hay maniobras pendientes para incluir en el PDF.");
+    alert("No hay maniobras pendientes con los filtros seleccionados para incluir en el PDF.");
     return;
   }
 
@@ -1329,110 +1402,539 @@ function descargarPDFInformeCFI() {
   }
 
   const { jsPDF } = window.jspdf;
+  const orientacion = (document.getElementById("cfi-filter-orientacion")?.value) || "portrait";
+  const isLandscape = orientacion === "landscape";
+  const incluirResumen = document.getElementById("cfi-chk-resumen") ? document.getElementById("cfi-chk-resumen").checked : true;
+
   const doc = new jsPDF({
-    orientation: "portrait",
+    orientation: orientacion,
     unit: "pt",
     format: "a4"
   });
 
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 36;
+  const contentWidth = pageWidth - (margin * 2);
+
+  // Totales estadísticos
   const totalItems = alumnosProblematicos.reduce((acc, a) => acc + a.itemsPendientes.length, 0);
+  const totalSuspNota = alumnosProblematicos.reduce((acc, a) => acc + a.itemsPendientes.filter(i => i.tipo === 'SUSPENDIDO' || (i.tipo !== 'ABIERTO' && i.nota !== 'N/A' && i.nota !== 'NA')).length, 0);
+  const totalAbiertos = alumnosProblematicos.reduce((acc, a) => acc + a.itemsPendientes.filter(i => i.tipo === 'ABIERTO' || i.nota === 'N/A' || i.nota === 'NA').length, 0);
+  const totalConPosterior = alumnosProblematicos.reduce((acc, a) => acc + a.itemsPendientes.filter(i => i.con_vuelo_posterior || i.recuperado).length, 0);
+  const totalRevisados = alumnosProblematicos.filter(a => a.expediente_revisado).length;
+
   const fechaHoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  // Cabecera Corporativa Blue Team
+  // 1. Cabecera Corporativa Blue Team (Página 1)
   doc.setFillColor(15, 23, 42); // #0f172a
-  doc.rect(0, 0, 595.28, 70, "F");
+  doc.rect(0, 0, pageWidth, 68, "F");
 
   // Accent Line Cyan
   doc.setFillColor(2, 132, 199); // #0284c7
-  doc.rect(0, 70, 595.28, 4, "F");
+  doc.rect(0, 68, pageWidth, 3.5, "F");
 
   // Textos Cabecera
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("BLUE TEAM FLIGHT ACADEMY", 40, 32);
+  doc.setFontSize(15);
+  doc.text("BLUE TEAM FLIGHT ACADEMY", margin, 26);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(148, 163, 184); // #94a3b8
-  doc.text("INFORME DE MANIOBRAS SUSPENDIDAS Y ABIERTAS (JEFATURA / CFI)", 40, 48);
-  doc.text("Seguimiento y reprogramación para apto a examen", 40, 60);
-
-  doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`Fecha: ${fechaHoy}`, 460, 35);
-  doc.text(`Alumnos: ${alumnosProblematicos.length}`, 460, 48);
-  doc.text(`Total Ítems: ${totalItems}`, 460, 61);
-
-  // Cuadro informativo
-  doc.setFont("helvetica", "italic");
   doc.setFontSize(8.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Nota: Contiene maniobras pendientes de reprogramar/cerrar. Los vuelos posteriores se indican como referencia informativa.", 40, 92);
+  doc.setTextColor(148, 163, 184); // #94a3b8
+  doc.text("ATO · Approved Training Organisation — Control y Auditoría Operativa", margin, 40);
 
-  // Preparar filas de tabla
-  const tableRows = [];
-  alumnosProblematicos.forEach(al => {
-    al.itemsPendientes.forEach((it, idx) => {
-      const studentCell = idx === 0 ? `${al.name}\n(PR: ${al.code || 'N/A'})` : "";
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(56, 189, 248); // #38bdf8
+  doc.text("INFORME OFICIAL DE ALUMNOS CON ÍTEMS SUSPENDIDOS", margin, 54);
+
+  // Resumen rápido en cabecera derecha
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Emisión: ${fechaHoy}`, pageWidth - margin, 24, { align: "right" });
+  doc.text(`Alumnos Afectados: ${alumnosProblematicos.length}`, pageWidth - margin, 38, { align: "right" });
+  doc.text(`Total Maniobras Pendientes: ${totalItems}`, pageWidth - margin, 52, { align: "right" });
+
+  let currentY = 82;
+
+  // 2. Cuadro Informativo de Metadatos y Filtros
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, currentY, contentWidth, 38, 3, 3, "FD");
+
+  // Accent vertical en el cuadro
+  doc.setFillColor(2, 132, 199);
+  doc.rect(margin, currentY, 3, 38, "F");
+
+  const cursoFiltro = document.getElementById("cfi-filter-curso") ? document.getElementById("cfi-filter-curso").value : "all";
+  const expFiltro = document.getElementById("cfi-filter-expedientes") ? document.getElementById("cfi-filter-expedientes").value : "all";
+  const cursoLabel = cursoFiltro === "all" ? "Todos los cursos" : cursoFiltro;
+  const expLabel = expFiltro === "revisados" ? "Solo auditados / revisados" : (expFiltro === "pendientes_auditar" ? "Solo por auditar" : "Todos los expedientes");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  doc.text("FILTRO:", margin + 8, currentY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Curso: ${cursoLabel}  |  Expedientes: ${expLabel}`, margin + 50, currentY + 12);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("DESGLOSE:", margin + 8, currentY + 24);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${totalSuspNota} Suspendidos (Nota 1-2)  |  ${totalAbiertos} Abiertos (N/A)  |  ${totalConPosterior} Con Vuelo Posterior  |  ${totalRevisados} Auditados`, margin + 60, currentY + 24);
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.2);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Nota ATO: Reporte de maniobras pendientes de reprogramar/cerrar antes de habilitar convocatorias de examen oficial.", margin + 8, currentY + 34);
+
+  currentY += 48;
+
+  // 3. Tabla Resumen Ejecutivo (Índice de Alumnos) si está habilitada
+  if (incluirResumen) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text("1. RESUMEN EJECUTIVO DE ALUMNOS AFECTADOS", margin, currentY);
+    currentY += 6;
+
+    const summaryHead = [["#", "Alumno", "Cód. PR", "Cursos", "Susp. (<=2)", "Abiertos", "V. Post.", "Total Pend.", "Expediente"]];
+
+    const summaryRows = alumnosProblematicos.map((al, idx) => {
+      const suspCount = al.itemsPendientes.filter(i => i.tipo === 'SUSPENDIDO' || (i.tipo !== 'ABIERTO' && i.nota !== 'N/A' && i.nota !== 'NA')).length;
+      const abCount = al.itemsPendientes.filter(i => i.tipo === 'ABIERTO' || i.nota === 'N/A' || i.nota === 'NA').length;
+      const postCount = al.itemsPendientes.filter(i => i.con_vuelo_posterior || i.recuperado).length;
+      const isRev = al.expediente_revisado ? "Auditado" : "Por auditar";
+
+      return [
+        String(idx + 1),
+        cleanTextForPdf(al.name),
+        cleanTextForPdf(al.code || "S/C"),
+        cleanTextForPdf((al.cursosPendientes || al.cursos).join(", ")),
+        String(suspCount),
+        String(abCount),
+        String(postCount),
+        String(al.itemsPendientes.length),
+        isRev
+      ];
+    });
+
+    summaryRows.push([
+      "",
+      "TOTALES GENERALES",
+      "",
+      "",
+      String(totalSuspNota),
+      String(totalAbiertos),
+      String(totalConPosterior),
+      String(totalItems),
+      `${totalRevisados} de ${alumnosProblematicos.length} Audit.`
+    ]);
+
+    doc.autoTable({
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: summaryHead,
+      body: summaryRows,
+      theme: "grid",
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontSize: 7.5,
+        fontStyle: "bold",
+        halign: "center"
+      },
+      bodyStyles: {
+        fontSize: 7.5,
+        textColor: [30, 41, 59],
+        cellPadding: 3.5
+      },
+      columnStyles: {
+        0: { cellWidth: 20, halign: "center" },
+        1: { cellWidth: isLandscape ? 180 : 135, fontStyle: "bold" },
+        2: { cellWidth: 50, halign: "center" },
+        3: { cellWidth: isLandscape ? 90 : 65, halign: "center" },
+        4: { cellWidth: 45, halign: "center", textColor: [185, 28, 28], fontStyle: "bold" },
+        5: { cellWidth: 45, halign: "center", textColor: [180, 83, 9], fontStyle: "bold" },
+        6: { cellWidth: 45, halign: "center" },
+        7: { cellWidth: 45, halign: "center", fontStyle: "bold", fillColor: [241, 245, 249] },
+        8: { cellWidth: isLandscape ? 90 : 70, halign: "center" }
+      },
+      didParseCell: function(data) {
+        if (data.section === "body" && data.row.index === summaryRows.length - 1) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [224, 242, 254];
+          data.cell.styles.textColor = [15, 23, 42];
+        }
+      }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 16;
+  }
+
+  // 4. Detalle Completo de Maniobras por Alumno
+  const secTitle = incluirResumen ? "2. DETALLE DE MANIOBRAS Y EJERCICIOS PENDIENTES POR ALUMNO" : "DETALLE DE MANIOBRAS Y EJERCICIOS PENDIENTES POR ALUMNO";
+  
+  if (currentY > pageHeight - 90) {
+    doc.addPage();
+    currentY = 32;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(secTitle, margin, currentY);
+  currentY += 8;
+
+  alumnosProblematicos.forEach((al, aIdx) => {
+    // Si queda poco espacio para la tarjeta del alumno y las primeras filas, saltar página
+    if (currentY > pageHeight - 75) {
+      doc.addPage();
+      currentY = 32;
+    }
+
+    // Tarjeta/Franja del Alumno
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, currentY, contentWidth, 20, 2, 2, "FD");
+
+    doc.setFillColor(2, 132, 199);
+    doc.rect(margin, currentY, 3.5, 20, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    const auditLabel = al.expediente_revisado ? "[AUDITADO]" : "[POR AUDITAR]";
+    const cursosBanner = (al.cursosPendientes || al.cursos).join(', ');
+    doc.text(
+      `${aIdx + 1}. ALUMNO: ${cleanTextForPdf(al.name)}   |   CÓD. PR: ${cleanTextForPdf(al.code || 'S/C')}   |   CURSO(S): ${cleanTextForPdf(cursosBanner)}`,
+      margin + 8,
+      currentY + 13
+    );
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Pendientes: ${al.itemsPendientes.length} maniobra(s)   |   Expediente: ${auditLabel}`,
+      pageWidth - margin - 6,
+      currentY + 13,
+      { align: "right" }
+    );
+
+    currentY += 24;
+
+    const itemRows = al.itemsPendientes.map(it => {
       const isAbierto = it.tipo === 'ABIERTO' || it.nota === 'N/A' || it.nota === 'NA';
-      let statusText = isAbierto ? '🟡 Ítem abierto' : '🔴 Sin superar';
+      const tagManual = it.es_manual ? ' [MANUAL]' : '';
+      
+      let diagText = "";
       if (it.con_vuelo_posterior || it.recuperado) {
-        statusText = `💬 Con vuelo posterior (Comentario)\n↳ ${it.detalle_recuperacion || 'Requiere reprogramar'}`;
+        diagText = `[V. POSTERIOR] ${it.detalle_recuperacion || 'Realizado en vuelo posterior. Requiere reprogramar y superar para cierre.'}`;
+      } else if (isAbierto) {
+        diagText = "[ABIERTO] Maniobra pendiente de realizar o evaluar.";
+      } else {
+        diagText = "[SUSPENDIDO] Calificación no apta (<= 2.0). Pendiente reprogramar.";
       }
 
-      tableRows.push([
-        studentCell,
-        it.curso,
-        `${it.item}${it.es_manual ? ' [MANUAL]' : ''}${isAbierto ? ' [ABIERTO]' : ''}`,
-        `Vuelo #${it.flight_id || 'N/A'}\n${it.fecha_display}`,
-        String(it.nota),
-        statusText
-      ]);
+      return [
+        cleanTextForPdf(it.curso),
+        cleanTextForPdf(`${it.item}${tagManual}`),
+        `Vuelo #${it.flight_id || 'S/D'}\n${it.fecha_display || '-'}`,
+        cleanTextForPdf(it.lesson || 'General'),
+        isAbierto ? "N/A" : String(it.nota),
+        cleanTextForPdf(diagText)
+      ];
     });
+
+    doc.autoTable({
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [["Curso", "Maniobra / Ejercicio", "Vuelo / Fecha", "Misión / Lección", "Nota", "Situación / Diagnóstico ATO"]],
+      body: itemRows,
+      theme: "striped",
+      headStyles: {
+        fillColor: [51, 65, 85],
+        textColor: [255, 255, 255],
+        fontSize: 7.5,
+        fontStyle: "bold",
+        halign: "center"
+      },
+      bodyStyles: {
+        fontSize: 7.2,
+        textColor: [30, 41, 59],
+        cellPadding: { top: 3.5, bottom: 3.5, left: 3, right: 3 },
+        valign: "middle"
+      },
+      columnStyles: {
+        0: { cellWidth: isLandscape ? 38 : 30, halign: "center", fontStyle: "bold" },
+        1: { cellWidth: isLandscape ? 190 : 140 },
+        2: { cellWidth: isLandscape ? 70 : 58, halign: "center", fontSize: 7 },
+        3: { cellWidth: isLandscape ? 70 : 56, halign: "center", fontSize: 7 },
+        4: { cellWidth: 28, halign: "center", fontStyle: "bold" },
+        5: { cellWidth: isLandscape ? 370 : 211, fontSize: 6.8 }
+      },
+      didParseCell: function(data) {
+        if (data.section === "body" && data.column.index === 4) {
+          const val = String(data.cell.raw);
+          if (val === "N/A" || val === "NA") {
+            data.cell.styles.textColor = [180, 83, 9];
+            data.cell.styles.fillColor = [254, 243, 199];
+          } else {
+            data.cell.styles.textColor = [185, 28, 28];
+            data.cell.styles.fillColor = [254, 226, 226];
+          }
+        }
+      }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 11;
   });
 
-  // Generar AutoTable
+  // 5. Encabezado de repetición (pág > 1) y Pies de página (todas las páginas)
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+
+    if (p > 1) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text("BLUE TEAM FLIGHT ACADEMY · ATO — Control de Ítems Suspendidos", margin, 18);
+      doc.text(`Fecha: ${fechaHoy}`, pageWidth - margin, 18, { align: "right" });
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(margin, 22, pageWidth - margin, 22);
+    }
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageHeight - 22, pageWidth - margin, pageHeight - 22);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Página ${p} de ${totalPages} — Blue Team Flight Academy · ATO — Control Operativo de Ítems Suspendidos`,
+      margin,
+      pageHeight - 12
+    );
+    doc.text(
+      "Sistema Integrado de Auditoría ATO",
+      pageWidth - margin,
+      pageHeight - 12,
+      { align: "right" }
+    );
+  }
+
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  await guardarPDFItemsSuspendidos(doc, `Informe_Items_Suspendidos_${dateStr}.pdf`);
+}
+
+async function descargarPDFInformeAlumno(studentIdentifier) {
+  if (!suspendidosData || !suspendidosData.alumnos) {
+    alert("No hay datos cargados de alumnos.");
+    return;
+  }
+
+  const sNorm = String(studentIdentifier).toLowerCase().trim();
+  const alumno = suspendidosData.alumnos.find(a => 
+    (a.code && a.code.toLowerCase().trim() === sNorm) ||
+    (a.name && a.name.toLowerCase().trim() === sNorm)
+  );
+
+  if (!alumno) {
+    alert("No se encontró el alumno seleccionado.");
+    return;
+  }
+
+  // Filtrar ítems pendientes
+  const itemsPendientes = alumno.items.filter(i => !i.corregido_en_pr);
+  if (itemsPendientes.length === 0) {
+    alert(`El alumno ${alumno.name} no tiene maniobras pendientes de resolver.`);
+    return;
+  }
+
+  if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
+    alert("La librería jsPDF no está disponible en este momento.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 36;
+  const contentWidth = pageWidth - (margin * 2);
+
+  // Cabecera Corporativa
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pageWidth, 68, "F");
+  doc.setFillColor(2, 132, 199);
+  doc.rect(0, 68, pageWidth, 3.5, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(255, 255, 255);
+  doc.text("BLUE TEAM FLIGHT ACADEMY", margin, 26);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text("ATO · Approved Training Organisation — Expediente Individual de Alumno", margin, 40);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(56, 189, 248);
+  doc.text("DOSSIER DE MANIOBRAS PENDIENTES DE SUBSANAR", margin, 54);
+
+  const fechaHoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Fecha: ${fechaHoy}`, pageWidth - margin, 26, { align: "right" });
+  doc.text(`Cód. PR: ${cleanTextForPdf(alumno.code || 'S/C')}`, pageWidth - margin, 40, { align: "right" });
+
+  let currentY = 82;
+
+  // Tarjeta Alumno
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(margin, currentY, contentWidth, 42, 3, 3, "FD");
+
+  doc.setFillColor(2, 132, 199);
+  doc.rect(margin, currentY, 3.5, 42, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(cleanTextForPdf(alumno.name), margin + 10, currentY + 16);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  const cursosAfectadosAlumno = Array.from(new Set(itemsPendientes.map(it => it.curso).filter(Boolean)));
+  const cursosAlumnoStr = (cursosAfectadosAlumno.length > 0 ? cursosAfectadosAlumno : alumno.cursos).join(', ');
+  doc.text(`Cursos: ${cleanTextForPdf(cursosAlumnoStr)}`, margin + 10, currentY + 28);
+  doc.text(`Total Maniobras Pendientes: ${itemsPendientes.length}`, margin + 10, currentY + 38);
+
+  const auditStatus = alumno.expediente_revisado 
+    ? `Expediente Auditado ${alumno.fecha_expediente_revisado ? '(' + alumno.fecha_expediente_revisado + ')' : ''}` 
+    : "Expediente Por Auditar";
+  doc.text(auditStatus, pageWidth - margin - 10, currentY + 16, { align: "right" });
+
+  currentY += 52;
+
+  // Tabla de Maniobras
+  const itemRows = itemsPendientes.map(it => {
+    const isAbierto = it.tipo === 'ABIERTO' || it.nota === 'N/A' || it.nota === 'NA';
+    let diag = "";
+    if (it.con_vuelo_posterior || it.recuperado) {
+      diag = `[V. POSTERIOR] ${it.detalle_recuperacion || 'Realizado en vuelo posterior. Debe reprogramarse formalmente.'}`;
+    } else if (isAbierto) {
+      diag = "[ABIERTO] Pendiente de realizar o evaluar.";
+    } else {
+      diag = "[SUSPENDIDO] Calificación no apta (<= 2.0). Pendiente reprogramar.";
+    }
+
+    return [
+      cleanTextForPdf(it.curso),
+      cleanTextForPdf(`${it.item}${it.es_manual ? ' [MANUAL]' : ''}`),
+      `Vuelo #${it.flight_id || 'S/D'}\n${it.fecha_display || '-'}`,
+      cleanTextForPdf(it.lesson || 'General'),
+      isAbierto ? "N/A" : String(it.nota),
+      cleanTextForPdf(diag)
+    ];
+  });
+
   doc.autoTable({
-    startY: 105,
-    margin: { left: 35, right: 35 },
-    head: [["Alumno / Cód. PR", "Curso", "Maniobra / Ejercicio", "Vuelo / Fecha", "Nota", "Diagnóstico / Estado"]],
-    body: tableRows,
+    startY: currentY,
+    margin: { left: margin, right: margin },
+    head: [["Curso", "Maniobra / Ejercicio", "Vuelo / Fecha", "Misión", "Nota", "Situación / Diagnóstico ATO"]],
+    body: itemRows,
     theme: "striped",
-    headStyles: {
-      fillColor: [30, 41, 59], // #1e293b
-      textColor: [248, 250, 252],
-      fontSize: 8,
-      fontStyle: "bold",
-      halign: "left"
-    },
-    columnStyles: {
-      0: { cellWidth: 120, fontStyle: "bold", fontSize: 8 },
-      1: { cellWidth: 45, halign: "center", fontStyle: "bold", fontSize: 8 },
-      2: { cellWidth: 155, fontSize: 8 },
-      3: { cellWidth: 70, fontSize: 7.5, halign: "center" },
-      4: { cellWidth: 35, halign: "center", fontStyle: "bold", textColor: [239, 68, 68], fontSize: 8.5 },
-      5: { cellWidth: 100, fontSize: 7.5 }
-    },
-    styles: {
-      overflow: "linebreak",
-      cellPadding: 4,
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold", halign: "center" },
+    bodyStyles: {
+      fontSize: 7.2,
+      textColor: [30, 41, 59],
+      cellPadding: { top: 3.5, bottom: 3.5, left: 3, right: 3 },
       valign: "middle"
     },
-    didDrawPage: (data) => {
-      // Pie de página con número
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text(
-        `Página ${data.pageNumber} de ${pageCount} — Blue Team Suite Operations`,
-        data.settings.margin.left,
-        doc.internal.pageSize.height - 20
-      );
+    columnStyles: {
+      0: { cellWidth: 30, halign: "center", fontStyle: "bold" },
+      1: { cellWidth: 140 },
+      2: { cellWidth: 58, halign: "center", fontSize: 7 },
+      3: { cellWidth: 56, halign: "center", fontSize: 7 },
+      4: { cellWidth: 28, halign: "center", fontStyle: "bold" },
+      5: { cellWidth: 211, fontSize: 6.8 }
+    },
+    didParseCell: function(data) {
+      if (data.section === "body" && data.column.index === 4) {
+        const val = String(data.cell.raw);
+        if (val === "N/A" || val === "NA") {
+          data.cell.styles.textColor = [180, 83, 9];
+          data.cell.styles.fillColor = [254, 243, 199];
+        } else {
+          data.cell.styles.textColor = [185, 28, 28];
+          data.cell.styles.fillColor = [254, 226, 226];
+        }
+      }
     }
   });
 
+  currentY = doc.lastAutoTable.finalY + 25;
+
+  // Sección de Firmas de Validación
+  if (currentY > pageHeight - 90) {
+    doc.addPage();
+    currentY = 40;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("VALIDACIÓN Y CONFORMIDAD OPERATIVA:", margin, currentY);
+  currentY += 15;
+
+  const colWidth = (contentWidth - 20) / 3;
+  // Firma 1: CFI
+  doc.setDrawColor(203, 213, 225);
+  doc.line(margin, currentY + 30, margin + colWidth, currentY + 30);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.text("Firma CFI / Jefatura de Vuelos", margin + colWidth / 2, currentY + 42, { align: "center" });
+
+  // Firma 2: Instructor
+  doc.line(margin + colWidth + 10, currentY + 30, margin + (colWidth * 2) + 10, currentY + 30);
+  doc.text("Firma Instructor Responsable", margin + colWidth + 10 + colWidth / 2, currentY + 42, { align: "center" });
+
+  // Firma 3: Alumno
+  doc.line(margin + (colWidth * 2) + 20, currentY + 30, margin + (colWidth * 3) + 20, currentY + 30);
+  doc.text("Enterado Alumno", margin + (colWidth * 2) + 20 + colWidth / 2, currentY + 42, { align: "center" });
+
+  // Número de páginas
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageHeight - 22, pageWidth - margin, pageHeight - 22);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Página ${p} de ${totalPages} — Blue Team Flight Academy · ATO — Expediente Individual`,
+      margin,
+      pageHeight - 12
+    );
+    doc.text(fechaHoy, pageWidth - margin, pageHeight - 12, { align: "right" });
+  }
+
+  const cleanFileCode = (alumno.code || alumno.name).replace(/[^a-zA-Z0-9_-]/g, '_');
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  doc.save(`Informe_CFI_Items_Suspendidos_${dateStr}.pdf`);
-  mostrarToastNotificacion("PDF para CFI generado y descargado con éxito.");
+  await guardarPDFItemsSuspendidos(doc, `Informe_Items_${cleanFileCode}_${dateStr}.pdf`);
 }

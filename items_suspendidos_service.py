@@ -778,6 +778,10 @@ def analyze_all_courses(folder_path=FOLDER_ITEMS):
     final_students = []
     for k, s in students_map.items():
         s["cursos"] = sorted(list(s["cursos"]))
+        s["cursos_con_pendientes"] = sorted(list(set(
+            it.get("curso") for it in s.get("items", [])
+            if not it.get("corregido_en_pr") and it.get("curso")
+        )))
         # Sort items chronologically by date descending or by course
         s["items"].sort(key=lambda x: (x.get("curso", ""), x.get("fecha", "")), reverse=True)
         

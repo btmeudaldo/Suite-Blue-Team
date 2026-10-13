@@ -45,7 +45,7 @@ ATL_FLOTA_FILE = os.path.join(BASE_DIR, "flota_atl.json")
 VUELOS_STATE_FILE = os.path.join(BASE_DIR, "estado_vuelos.json")
 
 
-def save_flight_pdf(pdf_bytes, filename, downloads_dir=None):
+def save_flight_pdf(pdf_bytes, filename, downloads_dir=None, fallback_folder="Informes_Vuelos"):
     if not isinstance(pdf_bytes, bytes) or not pdf_bytes.startswith(b"%PDF-"):
         raise ValueError("El archivo recibido no es un PDF válido")
     if len(pdf_bytes) > 25 * 1024 * 1024:
@@ -63,7 +63,7 @@ def save_flight_pdf(pdf_bytes, filename, downloads_dir=None):
         preferred_downloads = os.path.join(user_home, "Downloads")
         if not os.path.isdir(preferred_downloads):
             preferred_downloads = os.path.join(user_home, "Descargas")
-        target_directories = [preferred_downloads, os.path.join(BASE_DIR, "Informes_Vuelos")]
+        target_directories = [preferred_downloads, os.path.join(BASE_DIR, fallback_folder)]
     else:
         target_directories = [downloads_dir]
 
@@ -1290,6 +1290,30 @@ class ExamHandler(BaseHTTPRequestHandler):
                 if not os.path.isdir(downloads_dir):
                     downloads_dir = os.path.join(os.path.expanduser("~"), "Descargas")
                 location = "Descargas" if os.path.normcase(os.path.dirname(saved_path)) == os.path.normcase(os.path.abspath(downloads_dir)) else "Informes_Vuelos"
+                self.send_json({
+                    "status": "ok",
+                    "archivo": os.path.basename(saved_path),
+                    "ruta": saved_path,
+                    "carpeta": os.path.dirname(saved_path),
+                    "ubicacion": location,
+                    "explorer_opened": explorer_opened
+                })
+            except ValueError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=400)
+            except OSError as error:
+                self.send_json({"status": "error", "error": str(error)}, status=500)
+            return
+
+        elif path in ("/api/items_suspendidos/guardar_pdf", "/api/guardar_pdf"):
+            try:
+                filename = urllib.parse.unquote(self.headers.get("X-Filename", ""))
+                fallback = "Informes_Items_Suspendidos"
+                saved_path = save_flight_pdf(body, filename, fallback_folder=fallback)
+                explorer_opened = reveal_file_in_explorer(saved_path)
+                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                if not os.path.isdir(downloads_dir):
+                    downloads_dir = os.path.join(os.path.expanduser("~"), "Descargas")
+                location = "Descargas" if os.path.normcase(os.path.dirname(saved_path)) == os.path.normcase(os.path.abspath(downloads_dir)) else fallback
                 self.send_json({
                     "status": "ok",
                     "archivo": os.path.basename(saved_path),

@@ -1260,6 +1260,37 @@ class ExamHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": str(e)}, status=500)
             return
 
+        elif path == "/api/reparar_pdf/archivos":
+            try:
+                import reparar_pdf_service as rps
+                archivos = rps.listar_archivos_carpeta_repara()
+                self.send_json({"status": "ok", "archivos": archivos})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/reparar_pdf/preview":
+            try:
+                import reparar_pdf_service as rps
+                qs = urllib.parse.parse_qs(parsed.query)
+                ruta = qs.get("ruta", [""])[0].strip()
+                nombre = qs.get("nombre", [""])[0].strip()
+                pagina = int(qs.get("pagina", [0])[0])
+                if not ruta and nombre:
+                    ruta = os.path.join(rps.REPARA_DIR, nombre)
+                if not ruta or not os.path.exists(ruta):
+                    self.send_error(404, "Archivo no encontrado para vista previa")
+                    return
+                png_bytes = rps.generar_preview_imagen(ruta, num_pagina=pagina)
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(png_bytes)))
+                self.end_headers()
+                self.wfile.write(png_bytes)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
         else:
             self.send_error(404, "Ruta no encontrada")
 
@@ -2550,6 +2581,103 @@ class ExamHandler(BaseHTTPRequestHandler):
             try:
                 migrados = migrar_examenes_a_carpetas_alumno()
                 self.send_json({"status": "ok", "migrados": migrados})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/reparar_pdf/analizar":
+            try:
+                import reparar_pdf_service as rps
+                if body.startswith(b"%PDF-"):
+                    origen = body
+                else:
+                    data = json.loads(body.decode("utf-8")) if body else {}
+                    if data.get("pdf_base64"):
+                        origen = base64.b64decode(data["pdf_base64"])
+                    elif data.get("ruta"):
+                        origen = data["ruta"]
+                    elif data.get("nombre"):
+                        origen = os.path.join(rps.REPARA_DIR, data["nombre"])
+                    else:
+                        self.send_json({"error": "Debe especificar un archivo o datos PDF"}, status=400)
+                        return
+                stats = rps.analizar_pdf(origen)
+                self.send_json({"status": "ok", "stats": stats})
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/reparar_pdf/procesar":
+            try:
+                import reparar_pdf_service as rps
+                origen = None
+                nombre_archivo = "DOCUMENTO.pdf"
+                aplanar_aesa = True
+                eliminar_duplicados = True
+                guardar_en_descargas = True
+
+                if body.startswith(b"%PDF-"):
+                    origen = body
+                    nombre_archivo = urllib.parse.unquote(self.headers.get("X-Filename", "DOCUMENTO.pdf"))
+                    aplanar_aesa = self.headers.get("X-Aplanar-AESA", "true").lower() != "false"
+                    eliminar_duplicados = self.headers.get("X-Eliminar-Duplicados", "true").lower() != "false"
+                    guardar_en_descargas = self.headers.get("X-Guardar-Descargas", "true").lower() != "false"
+                else:
+                    data = json.loads(body.decode("utf-8")) if body else {}
+                    if data.get("pdf_base64"):
+                        origen = base64.b64decode(data["pdf_base64"])
+                    elif data.get("ruta"):
+                        origen = data["ruta"]
+                    elif data.get("nombre"):
+                        origen = os.path.join(rps.REPARA_DIR, data["nombre"])
+                    else:
+                        self.send_json({"error": "No se recibió archivo PDF para procesar"}, status=400)
+                        return
+
+                    nombre_archivo = data.get("nombre") or (os.path.basename(origen) if isinstance(origen, str) else "DOCUMENTO.pdf")
+                    aplanar_aesa = data.get("aplanar_aesa", True)
+                    eliminar_duplicados = data.get("eliminar_duplicados", True)
+                    guardar_en_descargas = data.get("guardar_en_descargas", True)
+
+                resultado = rps.reparar_pdf(
+                    origen,
+                    nombre_base=nombre_archivo,
+                    eliminar_duplicados=eliminar_duplicados,
+                    aplanar_aesa=aplanar_aesa,
+                    guardar_en_descargas=guardar_en_descargas
+                )
+
+                # Revelar en el explorador de Windows
+                if os.path.exists(resultado["ruta_guardada"]):
+                    reveal_file_in_explorer(resultado["ruta_guardada"])
+
+                # Devolver respuesta sin buffer binario pesado, pero con indicador base64 opcional si se requiere
+                resp_payload = {
+                    "status": "ok",
+                    "nombre_archivo": resultado["nombre_archivo"],
+                    "ruta_guardada": resultado["ruta_guardada"],
+                    "carpeta_destino": resultado["carpeta_destino"],
+                    "tamano_mb": resultado["tamano_mb"],
+                    "total_paginas": resultado["total_paginas"],
+                    "streams_reparados": resultado["streams_reparados"],
+                    "fue_aplanado": resultado["fue_aplanado"],
+                    "stats_antes": resultado["stats_antes"],
+                    "stats_despues": resultado["stats_despues"]
+                }
+                self.send_json(resp_payload)
+            except Exception as e:
+                self.send_json({"error": str(e)}, status=500)
+            return
+
+        elif path == "/api/reparar_pdf/abrir_carpeta":
+            try:
+                import reparar_pdf_service as rps
+                data = json.loads(body.decode("utf-8")) if body else {}
+                tipo = data.get("tipo", "repara")
+                target_dir = rps.REPARA_DIR if tipo == "repara" else rps.get_downloads_dir()
+                os.makedirs(target_dir, exist_ok=True)
+                os.startfile(target_dir)
+                self.send_json({"status": "ok", "carpeta": target_dir})
             except Exception as e:
                 self.send_json({"error": str(e)}, status=500)
             return

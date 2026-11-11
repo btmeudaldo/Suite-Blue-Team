@@ -15,6 +15,7 @@ function switchView(viewName) {
   const navBtnAuditor = document.getElementById('nav-btn-auditor');
   const navBtnVuelos = document.getElementById('nav-btn-vuelos');
   const navBtnSuspendidos = document.getElementById('nav-btn-suspendidos');
+  const navBtnRepara = document.getElementById('nav-btn-repara');
 
   if (navBtnHub) navBtnHub.classList.toggle('active', viewName === 'hub');
   if (navBtnExamenes) navBtnExamenes.classList.toggle('active', viewName === 'examenes');
@@ -23,6 +24,7 @@ function switchView(viewName) {
   if (navBtnAuditor) navBtnAuditor.classList.toggle('active', viewName === 'auditor');
   if (navBtnVuelos) navBtnVuelos.classList.toggle('active', viewName === 'vuelos');
   if (navBtnSuspendidos) navBtnSuspendidos.classList.toggle('active', viewName === 'suspendidos');
+  if (navBtnRepara) navBtnRepara.classList.toggle('active', viewName === 'reparar-pdf');
 
   // Alternar visibilidad de las vistas
   const viewHub = document.getElementById('view-hub');
@@ -32,6 +34,7 @@ function switchView(viewName) {
   const viewAuditor = document.getElementById('view-auditor');
   const viewVuelos = document.getElementById('view-vuelos');
   const viewSuspendidos = document.getElementById('view-suspendidos');
+  const viewRepara = document.getElementById('view-reparar-pdf');
 
   if (viewHub) viewHub.classList.toggle('hidden', viewName !== 'hub');
   if (viewExamenes) viewExamenes.classList.toggle('hidden', viewName !== 'examenes');
@@ -40,6 +43,7 @@ function switchView(viewName) {
   if (viewAuditor) viewAuditor.classList.toggle('hidden', viewName !== 'auditor');
   if (viewVuelos) viewVuelos.classList.toggle('hidden', viewName !== 'vuelos');
   if (viewSuspendidos) viewSuspendidos.classList.toggle('hidden', viewName !== 'suspendidos');
+  if (viewRepara) viewRepara.classList.toggle('hidden', viewName !== 'reparar-pdf');
 
   // Guardar en sessionStorage para mantener la pestaña activa al recargar
   try {
@@ -79,6 +83,10 @@ function switchView(viewName) {
       }
       if (typeof setupDragAndDrop === 'function') {
         setupDragAndDrop();
+      }
+    } else if (viewName === 'reparar-pdf') {
+      if (typeof initRepararPdfView === 'function') {
+        initRepararPdfView();
       }
     }
   } catch (err) {
@@ -163,7 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'nav-btn-atl', view: 'atl' },
     { id: 'nav-btn-secuencia', view: 'secuencia' },
     { id: 'nav-btn-vuelos', view: 'vuelos' },
-    { id: 'nav-btn-auditor', view: 'auditor' }
+    { id: 'nav-btn-auditor', view: 'auditor' },
+    { id: 'nav-btn-suspendidos', view: 'suspendidos' },
+    { id: 'nav-btn-repara', view: 'reparar-pdf' }
   ];
   navBtns.forEach(({ id, view }) => {
     const el = document.getElementById(id);
@@ -187,6 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Refrescar badges inmediatamente
   updateNavBadges();
+  if (typeof cargarArchivosCarpetaRepara === 'function') {
+    cargarArchivosCarpetaRepara();
+  }
 
   // Escuchar cambios de estado para actualizar badges periódicamente
   setInterval(updateNavBadges, 2000);

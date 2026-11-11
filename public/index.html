@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/x-icon" href="/public/app_icon.ico">
-  <link rel="stylesheet" href="/public/style.css?v=20260917-recovery">
+  <link rel="stylesheet" href="/public/style.css?v=20261111-repara-pdf">
 </head>
 <body>
   <div class="app-layout">
@@ -55,6 +55,11 @@
           <span class="nav-icon">⚠️</span>
           <span>Ítems Suspendidos</span>
           <span class="nav-badge nav-badge-warning" id="nav-badge-suspendidos" style="display: none; background: #ef4444; color: white;">0</span>
+        </button>
+        <button class="nav-btn" id="nav-btn-repara" onclick="switchView('reparar-pdf')">
+          <span class="nav-icon">🛠️</span>
+          <span>Reparar PDF</span>
+          <span class="nav-badge" id="nav-badge-repara" style="display: none; background: #0284c7; color: white;">0</span>
         </button>
       </div>
     </header>
@@ -240,6 +245,35 @@
           </div>
           <button class="btn btn-primary hub-btn" type="button" data-view="suspendidos" onclick="event.stopPropagation(); switchView('suspendidos');" style="background: #ef4444; border-color: #ef4444;">
             <span>Revisar Suspendidos</span>
+            <span>➔</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta 7: Reparador de PDFs (AESA y Textos Dobles) -->
+        <div class="hub-card hub-card-repara" data-view="reparar-pdf" onclick="switchView('reparar-pdf')">
+          <div class="hub-card-header">
+            <div class="hub-card-icon" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; font-size: 24px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px;">🛠️</div>
+            <div class="hub-card-badges">
+              <span class="badge-tech">Bug macOS Quartz</span>
+              <span class="badge-tech">Aplanador AESA</span>
+            </div>
+          </div>
+          <h3 class="hub-card-title">Reparador de PDFs (AESA)</h3>
+          <p class="hub-card-desc">
+            Corrección de formularios oficiales que presentan textos dobles o sombras tras ser rellenados en macOS o impresos en PDF. Aplana y genera un documento limpio y 100% no editable según normativa AESA.
+          </p>
+          <div class="hub-card-meta">
+            <div class="hub-meta-item">
+              <span class="meta-label">PDFs en carpeta:</span>
+              <span class="meta-val" id="hub-repara-count">0</span>
+            </div>
+            <div class="hub-meta-item">
+              <span class="meta-label">Estándar:</span>
+              <span class="meta-val text-success">AESA No Editable</span>
+            </div>
+          </div>
+          <button class="btn btn-primary hub-btn" type="button" data-view="reparar-pdf" onclick="event.stopPropagation(); switchView('reparar-pdf');" style="background: #0284c7; border-color: #0284c7;">
+            <span>Reparar Documentos</span>
             <span>➔</span>
           </button>
         </div>
@@ -1301,6 +1335,127 @@
     </div>
   </section>
 
+  <!-- ========================================================= -->
+  <!-- VISTA 7: REPARADOR DE PDFS (AESA / TEXTOS DOBLES)         -->
+  <!-- ========================================================= -->
+  <section id="view-reparar-pdf" class="view-section hidden">
+    <!-- Barra Superior / Header del Módulo -->
+    <header class="app-header repara-header">
+      <div class="brand-area">
+        <div class="header-icon-box" style="background: rgba(2, 132, 199, 0.15); color: #0284c7; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 24px;">🛠️</div>
+        <div>
+          <h1 class="header-title" style="margin: 0; font-size: 1.35rem; font-weight: 700;">Reparador de Formularios PDF y Aplanador AESA</h1>
+          <p class="header-subtitle" style="margin: 2px 0 0 0; color: var(--text-muted); font-size: 0.85rem;">
+            Eliminación de textos dobles y sombras provocadas por macOS Preview / Quartz en formularios de examen y aplanado a formato no editable.
+          </p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="abrirCarpetaRepara()" title="Abrir carpeta local 'Repara PDF' en el Explorador de Windows">
+          📁 Abrir Carpeta Repara PDF
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="abrirCarpetaDescargas()" title="Abrir carpeta de Descargas de Windows">
+          📥 Abrir Descargas
+        </button>
+      </div>
+    </header>
+
+    <!-- Layout Principal en Dos Columnas -->
+    <div class="repara-layout-grid">
+      
+      <!-- Columna Izquierda: Carga y Archivos Disponibles -->
+      <div class="repara-col-left">
+        
+        <!-- Dropzone -->
+        <div class="repara-card">
+          <h3 class="repara-card-title">📥 Cargar o Arrastrar Documento</h3>
+          <div id="repara-dropzone" class="repara-dropzone" onclick="document.getElementById('repara-file-input').click()">
+            <input type="file" id="repara-file-input" accept=".pdf" style="display: none;" />
+            <div class="repara-drop-icon">📄</div>
+            <div class="repara-drop-text">
+              <strong>Arrastra aquí el archivo PDF</strong>
+              <span>o haz clic para explorar en tu equipo</span>
+            </div>
+            <div class="repara-drop-sub">Soporta formularios AESA, EASA, fichas de vuelo y exámenes</div>
+          </div>
+        </div>
+
+        <!-- Lista de Archivos en la Carpeta Local -->
+        <div class="repara-card" style="margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h3 class="repara-card-title" style="margin: 0;">📂 Archivos en Carpeta "Repara PDF"</h3>
+            <button class="btn btn-secondary btn-sm" onclick="cargarArchivosCarpetaRepara()" title="Recargar lista de archivos">
+              🔄 Refrescar
+            </button>
+          </div>
+          <div id="repara-lista-archivos" class="repara-file-list">
+            <!-- Rellenado por JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Columna Derecha: Diagnóstico, Configuración y Acción -->
+      <div class="repara-col-right">
+
+        <!-- Panel de Diagnóstico -->
+        <div id="repara-panel-diagnostico" class="repara-card">
+          <div class="repara-placeholder">
+            <span style="font-size: 32px;">🔍</span>
+            <p>Selecciona un archivo PDF de la lista o arrastra uno nuevo para analizar su estructura interna.</p>
+          </div>
+        </div>
+
+        <!-- Opciones de Reparación y Aplanado -->
+        <div class="repara-card" style="margin-top: 1rem;">
+          <h3 class="repara-card-title">⚙️ Opciones de Procesamiento Oficial</h3>
+          <div class="repara-options-list">
+            
+            <label class="repara-option-item">
+              <input type="checkbox" id="cfg-repara-aplanar" checked>
+              <div>
+                <strong>🔒 Aplanar documento para AESA (Hacer 100% no editable)</strong>
+                <span>Convierte permanentemente todos los campos de formulario y anotaciones en texto vectorial indeleble, eliminando el diccionario interactivo AcroForm como exige la normativa AESA.</span>
+              </div>
+            </label>
+
+            <label class="repara-option-item">
+              <input type="checkbox" id="cfg-repara-duplicados" checked>
+              <div>
+                <strong>✨ Eliminar textos dobles (Corrección Bug Apple Preview / Quartz)</strong>
+                <span>Elimina las inyecciones secundarias desalineadas generadas en macOS y restaura la visualización nítida del texto original.</span>
+              </div>
+            </label>
+
+            <label class="repara-option-item">
+              <input type="checkbox" id="cfg-repara-descargas" checked>
+              <div>
+                <strong>📥 Guardar en carpeta "Descargas" y seleccionar en Windows Explorer</strong>
+                <span>Genera el archivo con el sufijo <code>_REPARADO_AESA.pdf</code> y abre automáticamente la ventana del explorador para su envío inmediato.</span>
+              </div>
+            </label>
+
+          </div>
+
+          <!-- Botón de Reparación Principal -->
+          <div style="margin-top: 1.25rem;">
+            <button id="btn-ejecutar-reparacion" class="btn btn-primary repara-main-btn" onclick="ejecutarReparacionPDF()" disabled>
+              <span>🛠️ Reparar PDF y Guardar (Listo para AESA)</span>
+              <span>➔</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner de Resultados / Éxito -->
+        <div id="repara-resultado-box" style="display: none; margin-top: 1rem;">
+          <!-- JS renderiza el resultado -->
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
   <!-- MODAL: GESTIÓN Y SUBIDA DE ARCHIVOS EXCEL -->
   <div id="modal-archivos-suspendidos" class="modal hidden">
     <div class="modal-backdrop" onclick="cerrarModalArchivosSuspendidos()"></div>
@@ -1615,7 +1770,7 @@
   </div>
 
   <!-- Scripts de la Aplicación (nav.js primero para disponibilidad inmediata del router) -->
-  <script src="/public/nav.js?v=20261002-nav-fix-2"></script>
+  <script src="/public/nav.js?v=20261111-repara-pdf"></script>
   <script src="/public/shared/item-autosave.js?v=20260917-safe-save"></script>
   <script src="/public/shared/state-feedback.js?v=20260917-recovery"></script>
   <script src="/public/app.js?v=20260917-recovery"></script>
@@ -1628,5 +1783,6 @@
   <script src="/public/shared/jspdf.plugin.autotable.min.js"></script>
   <script src="/public/vuelos.js?v=20261002-vuelos-atl-manual-2"></script>
   <script src="/public/items_suspendidos.js?v=20261013-cursos-pendientes-only"></script>
+  <script src="/public/reparar_pdf.js?v=20261111-init"></script>
 </body>
 </html>

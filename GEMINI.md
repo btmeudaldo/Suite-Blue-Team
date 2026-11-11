@@ -20,6 +20,11 @@ Este archivo actúa como la **memoria persistente y base de directrices del proy
    - Digitalización, corte, OCR/calibración y renumeración secuencial de hojas de libro de vuelo de aeronaves (ATL).
 4. **Exámenes de Alumnos (`public/app.js`)**:
    - División de escaneos de exámenes y asignación a expedientes de alumnos por materia EASA.
+5. **Reparador de Formularios PDF y Aplanador AESA (`public/reparar_pdf.js`, `reparar_pdf_service.py`)**:
+   - Corrección del bug de duplicación de textos desalineados/sombras inyectados por el motor Quartz / Apple Preview de macOS en flujos `/AP` de AcroForms.
+   - Aplanado permanente normativo AESA (`doc.bake(annots=True, widgets=True)`): convierte campos y anotaciones en vectores/texto indelebles sin formulario interactivo.
+   - Detección automática en carpeta `Repara PDF/` y mediante Drag & Drop.
+   - Guardado automático en `Descargas` con revelado directo en el Explorador de Windows.
 
 ---
 

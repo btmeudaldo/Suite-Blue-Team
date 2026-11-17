@@ -2758,6 +2758,17 @@ function registerInstructorInCatalog(code, name, save = true) {
   if (existing) {
     if (c && !existing.code) existing.code = c;
     if (n && (!existing.name || existing.name.length < n.length)) existing.name = n;
+    // Asegurar que también quede persistido en CUSTOM_INSTRUCTORES_CATALOG si es un código nuevo o actualizado
+    const customExisting = CUSTOM_INSTRUCTORES_CATALOG.find(i =>
+      (c && i.code && i.code.toUpperCase() === c) ||
+      (n && i.name && i.name.toLowerCase() === n.toLowerCase())
+    );
+    if (customExisting) {
+      if (c) customExisting.code = c;
+      if (n && (!customExisting.name || customExisting.name.length < n.length)) customExisting.name = n;
+    } else {
+      CUSTOM_INSTRUCTORES_CATALOG.push({ code: existing.code || c, name: existing.name || n, role: existing.role || 'Instructor' });
+    }
   } else {
     CUSTOM_INSTRUCTORES_CATALOG.push({ code: c, name: n, role: 'Instructor' });
   }
@@ -4582,6 +4593,24 @@ function toggleFlightVerification(flightIndex, isVerified) {
   vuelosState.savedReports = getLocalReportsList();
 }
 
+let vuelosSaveNoticeTimer = null;
+
+function showVuelosSaveNotice(message, durationMs = 4000) {
+  if (vuelosSaveNoticeTimer) {
+    clearTimeout(vuelosSaveNoticeTimer);
+    vuelosSaveNoticeTimer = null;
+  }
+  vuelosState.saveNotice = message || '';
+  if (message) {
+    vuelosSaveNoticeTimer = setTimeout(() => {
+      vuelosState.saveNotice = '';
+      vuelosSaveNoticeTimer = null;
+      const noticeEl = document.getElementById('vuelos-save-notice');
+      if (noticeEl) noticeEl.remove();
+    }, durationMs);
+  }
+}
+
 function recalculateAndPersistVuelos(notice = '') {
   vuelosState.kpis = calculateExecutiveKpis(vuelosState.matchedFlights);
   vuelosState.studentStats = aggregateByStudent(vuelosState.matchedFlights);
@@ -4601,21 +4630,50 @@ function recalculateAndPersistVuelos(notice = '') {
   vuelosState.cumulativeData = computeCumulativeHistory();
 
   if (notice) {
-    vuelosState.saveNotice = notice;
-    setTimeout(() => {
-      vuelosState.saveNotice = '';
-      renderVuelosUI();
-    }, 4000);
+    showVuelosSaveNotice(notice, 4000);
   }
+  const prevScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
   renderVuelosUI();
+  if (typeof window !== 'undefined' && prevScrollY > 0) {
+    requestAnimationFrame(() => window.scrollTo(0, prevScrollY));
+  }
 }
 
 let currentEditingFlightIndex = -1;
+
+function resolveFlightCrewCodes(flight) {
+  if (!flight) return { studentCode: '', studentName: '', instructorCode: '', instructorName: '' };
+  let studentCode = String(flight.studentCode || '').trim().toUpperCase();
+  let studentName = String(flight.studentName || '').trim();
+  let instructorCode = String(flight.instructorCode || '').trim().toUpperCase();
+  let instructorName = String(flight.instructorName || '').trim();
+
+  if (!studentCode && studentName) {
+    const stu = findStudentByName(studentName);
+    if (stu && stu.code) studentCode = stu.code;
+  }
+  if ((!studentName || studentName === studentCode) && studentCode) {
+    const stu = findStudentByCode(studentCode);
+    if (stu && stu.name) studentName = stu.name;
+  }
+
+  if (!instructorCode && instructorName) {
+    const inst = findInstructorByName(instructorName);
+    if (inst && inst.code) instructorCode = inst.code;
+  }
+  if ((!instructorName || instructorName === instructorCode) && instructorCode) {
+    const inst = findInstructorByCode(instructorCode);
+    if (inst && inst.name) instructorName = inst.name;
+  }
+
+  return { studentCode, studentName, instructorCode, instructorName };
+}
 
 function openFlightEditModal(flightIndex) {
   currentEditingFlightIndex = (typeof flightIndex === 'number') ? flightIndex : -1;
   const isNew = currentEditingFlightIndex < 0 || currentEditingFlightIndex >= vuelosState.matchedFlights.length;
   const flight = !isNew ? vuelosState.matchedFlights[currentEditingFlightIndex] : null;
+  const resolvedCrew = resolveFlightCrewCodes(flight);
 
   const modal = document.getElementById('vuelos-flight-edit-modal');
   if (!modal) return;
@@ -4625,10 +4683,10 @@ function openFlightEditModal(flightIndex) {
   document.getElementById('edit-registration').value = flight?.registration || 'EC-';
   document.getElementById('edit-route').value = flight?.route || 'GCXO -> GCXO';
   document.getElementById('edit-flight-type').value = flight?.flightType || 'Instruction';
-  document.getElementById('edit-student-code').value = flight?.studentCode || '';
-  document.getElementById('edit-student-name').value = flight?.studentName || '';
-  document.getElementById('edit-instructor-code').value = flight?.instructorCode || '';
-  document.getElementById('edit-instructor-name').value = flight?.instructorName || '';
+  document.getElementById('edit-student-code').value = resolvedCrew.studentCode;
+  document.getElementById('edit-student-name').value = resolvedCrew.studentName;
+  document.getElementById('edit-instructor-code').value = resolvedCrew.instructorCode;
+  document.getElementById('edit-instructor-name').value = resolvedCrew.instructorName;
   document.getElementById('edit-sched-time').value = flight?.scheduledHoursFormatted || '01:30';
   document.getElementById('edit-flown-time').value = flight?.isCancelled ? '00:00' : (flight?.flownHoursFormatted || '01:30');
   const isCancelled = Boolean(flight?.isCancelled);
@@ -5060,9 +5118,8 @@ function loadSampleData2809() {
 
   vuelosState.savedReports = getLocalReportsList();
   vuelosState.cumulativeData = computeCumulativeHistory();
-  vuelosState.saveNotice = 'Datos de muestra del 28/09/2026 cargados con éxito.';
+  showVuelosSaveNotice('Datos de muestra del 28/09/2026 cargados con éxito.', 4000);
   renderVuelosUI();
-  setTimeout(() => { vuelosState.saveNotice = ''; renderVuelosUI(); }, 4000);
 }
 
 // Procesa los 2 archivos Excel seleccionados por el usuario
@@ -5120,8 +5177,7 @@ async function processUploadedExcels(progBuffer, volBuffer) {
     vuelosState.savedReports = getLocalReportsList();
     vuelosState.cumulativeData = computeCumulativeHistory();
 
-    vuelosState.saveNotice = `¡Procesados con éxito ${matched.length} vuelos en ${sortedEntries.length} jornada(s)!`;
-    setTimeout(() => { vuelosState.saveNotice = ''; renderVuelosUI(); }, 4000);
+    showVuelosSaveNotice(`¡Procesados con éxito ${matched.length} vuelos en ${sortedEntries.length} jornada(s)!`, 4000);
   } catch (err) {
     alert(`Error al procesar Excels: ${err.message}`);
   } finally {
@@ -5460,17 +5516,20 @@ async function exportVuelosPdf() {
   doc.text('Detalle Operativo de Vuelos', 14, currentY);
   currentY += 3;
 
-  const tableRows = vuelosState.matchedFlights.map(f => [
-    f.flightNumber,
-    f.registration,
-    (f.studentCode ? `[${f.studentCode}] ` : '') + (f.studentName || '—'),
-    (f.instructorCode ? `[${f.instructorCode}] ` : '') + (f.instructorName || '—'),
-    formatFlightInfoCell(f),
-    f.scheduledHoursFormatted,
-    f.isCancelled ? '—' : f.flownHoursFormatted,
-    f.isCancelled ? '—' : f.deviationHoursFormatted,
-    f.isCancelled ? 'CANCELADO' : (f.status === 'ON_TIME' ? 'Puntual' : f.deviationHoursFormatted)
-  ]);
+  const tableRows = vuelosState.matchedFlights.map(f => {
+    const crew = resolveFlightCrewCodes(f);
+    return [
+      f.flightNumber,
+      f.registration,
+      (crew.studentCode ? `[${crew.studentCode}] ` : '') + (crew.studentName || '—'),
+      (crew.instructorCode ? `[${crew.instructorCode}] ` : '') + (crew.instructorName || '—'),
+      formatFlightInfoCell(f),
+      f.scheduledHoursFormatted,
+      f.isCancelled ? '—' : f.flownHoursFormatted,
+      f.isCancelled ? '—' : f.deviationHoursFormatted,
+      f.isCancelled ? 'CANCELADO' : (f.status === 'ON_TIME' ? 'Puntual' : f.deviationHoursFormatted)
+    ];
+  });
 
   doc.autoTable({
     startY: currentY,
@@ -6213,7 +6272,7 @@ function renderVuelosUI() {
     </header>
 
     ${vuelosState.saveNotice ? `
-      <div class="state-notice" style="border-color: #10b981; background: rgba(16, 185, 129, 0.15); color: #10b981; margin-bottom: 18px;">
+      <div id="vuelos-save-notice" class="state-notice" style="border-color: #10b981; background: rgba(16, 185, 129, 0.15); color: #10b981; margin-bottom: 18px;">
         ✅ <strong>${vuelosState.saveNotice}</strong>
       </div>
     ` : ''}
